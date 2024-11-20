@@ -1,1 +1,1 @@
-cc -o cacertinmem cacertinmem.c -lcurl -lssl -lcrypto
+cc -o curlx curlx.c -lcurl -lssl -lcrypto
