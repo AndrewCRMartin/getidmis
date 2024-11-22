@@ -1,3 +1,4 @@
+#define TEST_SUBSTITUTE
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -23,31 +24,67 @@ typedef short int BOOL;
 #define FALSE 0
 */
 
-/*************************************************************************************/
+
+/** WORKING ******************************************************************/
 STRINGLIST *SplitLine(char splitChar, char *page)
 {
    int posInPage = 0,
        lastPosInPage = 0;
 
    STRINGLIST *strings = NULL;
+   char *pageCopy = NULL;
+
+   if((pageCopy=strdup(page))==NULL)
+      return(NULL);
    
-   for(posInPage=0; page[posInPage] != '\0'; posInPage++)
+   for(posInPage=0; pageCopy[posInPage] != '\0'; posInPage++)
    {
-      if(page[posInPage] == splitChar)
+      if(pageCopy[posInPage] == splitChar)
       {
-         page[posInPage] = '\0';
-         if((strings = blStoreString(strings, page+lastPosInPage))==NULL)
+         pageCopy[posInPage] = '\0';
+         if((strings = blStoreString(strings, pageCopy+lastPosInPage))==NULL)
+         {
+            free(pageCopy);
             return(NULL);
-         page[posInPage] = splitChar;
+         }
+         
+         posInPage++;
          lastPosInPage = posInPage;
       }
    }
-   /* and the last one */
-   if((strings = blStoreString(strings, page+lastPosInPage))==NULL)
-      return(NULL);
    
-   return(NULL);
+   /* and the last one */
+   if(strlen(pageCopy+lastPosInPage) > 1)
+   {
+      if((strings = blStoreString(strings, pageCopy+lastPosInPage))==NULL)
+      {
+         free(pageCopy);
+         return(NULL);
+      }
+   }
+   
+
+   free(pageCopy);
+   return(strings);
 }
+#ifdef TEST_SPLITLINE
+#   define TEST 1
+
+int main(int argc, char **argv)
+{
+   
+   STRINGLIST *strings = NULL, *s;
+
+   strings = SplitLine('\n', "Once upon a time\nThere was a piece of code\n\
+That needed to be tested\n");
+   for(s=strings; s!=NULL; NEXT(s))
+   {
+      printf("%s\n", s->string);
+   }
+   return(0);
+}
+#endif
+
 
 /*************************************************************************************/
 char *Substitute(char *string, char *old, char *new, BOOL global)
@@ -85,6 +122,24 @@ char *Substitute(char *string, char *old, char *new, BOOL global)
     
     return(newString);
 }
+
+#ifdef TEST_SUBSTITUTE
+#   define TEST 1
+
+int main(int argc, char **argv)
+{
+   char *string;
+   string = (char *)malloc(200*sizeof(char));
+   strcpy(string,"Once upon a time\nThere was a piece of code\n\
+That needed to be tested\n");
+
+   string = Substitute(string, "\n", "|", FALSE);
+   printf("%s\n", string);
+   return(0);
+   
+}
+#endif
+
 
 BOOL GetURLandFilename(char *line, char *url, char *filename)
 {
@@ -211,6 +266,7 @@ BOOL ProcessPage(char *reqID, char *page, char *cFile, char *passwd, BOOL verbos
 
 
 /*************************************************************************************/
+#ifndef TEST
 int main(int argc, char **argv)
 {
     char tplURL[MAXSTRING],
@@ -241,6 +297,7 @@ int main(int argc, char **argv)
     }
     return(0);
 }
+#endif /* TEST */
 
 /*************************************************************************************/
 BOOL ProcessPage(char *reqID, char *page, char *cFile, char *passwd, BOOL verbose)
