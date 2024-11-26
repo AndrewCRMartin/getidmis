@@ -62,7 +62,6 @@ STRINGLIST *SplitLine(char splitChar, char *page)
          return(NULL);
       }
    }
-   
 
    free(pageCopy);
    return(strings);
@@ -110,7 +109,7 @@ char *Substitute(char *string, char *old, char *new, BOOL global)
     for(chp=new; *chp!='\0'; chp++)
        newString[nChar++] = *chp;
     /* Last part */
-    for(chp=string+strlen(old); *chp!='\0'; chp++)
+    for(chp=offset+1; *chp!='\0'; chp++)
        newString[nChar++] = *chp;
     /* Terminate */
     newString[nChar] = '\0';
@@ -131,9 +130,9 @@ int main(int argc, char **argv)
    char *string;
    string = (char *)malloc(200*sizeof(char));
    strcpy(string,"Once upon a time\nThere was a piece of code\n\
-That needed to be tested\n");
+That needed to be tested");
 
-   string = Substitute(string, "\n", "|", FALSE);
+   string = Substitute(string, "\n", "|", TRUE);
    printf("%s\n", string);
    return(0);
    
