@@ -1,4 +1,4 @@
-#define TEST_SUBSTITUTE
+#define TEST_GETURLANDFILENAME
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -85,6 +85,7 @@ That needed to be tested\n");
 #endif
 
 
+/** WORKING ******************************************************************/
 /*************************************************************************************/
 char *Substitute(char *string, char *old, char *new, BOOL global)
 {
@@ -124,7 +125,6 @@ char *Substitute(char *string, char *old, char *new, BOOL global)
 
 #ifdef TEST_SUBSTITUTE
 #   define TEST 1
-
 int main(int argc, char **argv)
 {
    char *string;
@@ -139,6 +139,8 @@ That needed to be tested");
 }
 #endif
 
+
+/**  ******************************************************************/
 
 BOOL GetURLandFilename(char *line, char *url, char *filename)
 {
@@ -200,10 +202,32 @@ BOOL GetURLandFilename(char *line, char *url, char *filename)
       filename[nFilename++] = *chp;
       chp++;
    }
-   url[nFilename] = '\0';
+   filename[nFilename] = '\0';
 
    return(TRUE);
 }
+
+#ifdef TEST_GETURLANDFILENAME
+#   define TEST 1
+int main(int argc, char **argv)
+{
+   char *line = "Some text \
+<a href='http://xyz.com/something'>MyFileName.txt</a> More text";
+   char url[100],
+      filename[100];
+   BOOL ret;
+      
+   ret = GetURLandFilename(line, url, filename);
+   
+   printf("ret: %s\n", ret?"TRUE":"FALSE");
+   printf("url: %s\n", url);
+   printf("fnm: %s\n", filename);
+   return(0);
+   
+}
+#endif
+
+
 
 /*************************************************************************************/
 BOOL StringContains(char *string, char *contains)
