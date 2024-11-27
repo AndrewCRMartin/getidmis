@@ -1,4 +1,4 @@
-#define TEST_GETURLANDFILENAME
+#define TEST_STRINGCONTAINS
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -140,7 +140,7 @@ That needed to be tested");
 #endif
 
 
-/**  ******************************************************************/
+/** WORKING  ******************************************************************/
 
 BOOL GetURLandFilename(char *line, char *url, char *filename)
 {
@@ -228,14 +228,30 @@ int main(int argc, char **argv)
 #endif
 
 
-
-/*************************************************************************************/
+/**  ******************************************************************/
 BOOL StringContains(char *string, char *contains)
 {
    if(strstr(string, contains)!=NULL)
       return(TRUE);
    return(FALSE);
 }
+#ifdef TEST_STRINGCONTAINS
+#   define TEST 1
+int main(int argc, char **argv)
+{
+   char *line = "Some text which I want to test";
+   BOOL ret;
+      
+   ret = StringContains(line, "text");
+   printf("'text' %s\n", ret?"TRUE":"FALSE");
+
+   ret = StringContains(line, "elephant");
+   printf("'elephant' %s\n", ret?"TRUE":"FALSE");
+
+   return(0);
+   
+}
+#endif
 
 /*************************************************************************************/
 BOOL ReadPasswd(char *passwdFile, char *passwd)
