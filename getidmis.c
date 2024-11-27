@@ -1,4 +1,12 @@
-#define TEST_EXECUTE
+/*
+  There is still a problem in Substitute() - if we malloc an extra 1000 bytes it doesn't core dump
+  when building the url, but it does in doing the & substituteion at line 129 as the recursion doesn't
+  return!
+ */
+
+
+#undef TEST_GETURLANDFILENAME
+#define TEST_PROCESSPAGE
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -13,9 +21,12 @@ extern FILE *popen(const char *, const char *);
 extern int pclose(FILE *);
 #endif
 
+/* Prototypes */
+BOOL ProcessPage(char *reqID, char *page, char *cFile, char *passwd,
+                 BOOL verbose);
 char *strdup(const char *s);
 
-#define MAXSTRING 160
+#define MAXSTRING 512
 #define HUGEBUFF 1024
 char *gBaseURL = "https://extranets.who.int/inn";
 /*
@@ -24,21 +35,47 @@ typedef short int BOOL;
 #define FALSE 0
 */
 
+char *mystrdup(char *in)
+{
+   char *out;
+   ULONG inlen;
+   inlen = strlen(in) + 8;
+#ifdef TEST
+   printf("Input length: %ld\n", inlen);
+#endif
+   out = (char *)malloc(inlen*sizeof(char));
+   strcpy(out, in);
+   return(out);
+}
+
 
 /** WORKING ******************************************************************/
 STRINGLIST *SplitLine(char splitChar, char *page)
 {
-   int posInPage = 0,
-       lastPosInPage = 0;
+   ULONG posInPage = 0,
+      lastPosInPage = 0,
+      pageSize = 0;
 
    STRINGLIST *strings = NULL;
    char *pageCopy = NULL;
 
-   if((pageCopy=strdup(page))==NULL)
+   if((pageCopy=mystrdup(page))==NULL)
       return(NULL);
+
+   pageSize = strlen(pageCopy);
    
-   for(posInPage=0; pageCopy[posInPage] != '\0'; posInPage++)
+/*
+   printf(">>> lens: %d %ld\n", strlen(page), pageSize);
+   printf(">>> '%c'\n", pageCopy[pageSize]);
+*/
+   
+   for(posInPage=0; posInPage<pageSize; posInPage++)
    {
+#ifdef TEST
+      printf("%c", pageCopy[posInPage]);
+#endif
+      printf("%ld,", posInPage);
+      fflush(stdout);
       if(pageCopy[posInPage] == splitChar)
       {
          pageCopy[posInPage] = '\0';
@@ -92,13 +129,14 @@ char *Substitute(char *string, char *old, char *new, BOOL global)
    char *newString = NULL,
       *offset = NULL,
       *chp;
-   int newLen = strlen(string) - strlen(old) + strlen(new) + 1;
+   int newLen;
    int nChar;
 
    /* old string not found */
    if((offset = strstr(string, old))==NULL)
       return(string);
     
+    newLen = strlen(string) - strlen(old) + strlen(new) + 1000;
     if((newString = (char *)malloc(newLen * sizeof(char)))==NULL)
        return(NULL);
 
@@ -110,7 +148,7 @@ char *Substitute(char *string, char *old, char *new, BOOL global)
     for(chp=new; *chp!='\0'; chp++)
        newString[nChar++] = *chp;
     /* Last part */
-    for(chp=offset+1; *chp!='\0'; chp++)
+    for(chp=offset+strlen(old); *chp!='\0'; chp++)
        newString[nChar++] = *chp;
     /* Terminate */
     newString[nChar] = '\0';
@@ -149,6 +187,7 @@ BOOL GetURLandFilename(char *line, char *url, char *filename)
     */
    int nURL = 0;
    int nFilename = 0;
+   char ch;
    
    char *chp = NULL;
    if((chp = strstr(line, "href"))==NULL)
@@ -179,7 +218,10 @@ BOOL GetURLandFilename(char *line, char *url, char *filename)
    {
       if(*chp == '\0')
          return(FALSE);
-      url[nURL++] = *chp;
+/*      url[nURL++] = *chp; */
+      ch = *chp;
+      url[nURL] = ch;
+      nURL++;
       chp++;
    }
    url[nURL] = '\0';
@@ -211,10 +253,13 @@ BOOL GetURLandFilename(char *line, char *url, char *filename)
 #   define TEST 1
 int main(int argc, char **argv)
 {
+   /*
    char *line = "Some text \
 <a href='http://xyz.com/something'>MyFileName.txt</a> More text";
-   char url[100],
-      filename[100];
+   */
+   char *line = "\t\t\t\t\t\t\t\t</td><td><table><tbody><tr><td><a href=\"./INN_Requests/12079/Document_Info/12079_decobatamab_dezotansine.pdf\">12079_decobatamab_dezotansine.pdf</a></td></tr></tbody></table></td></tr><tr><td>";
+   char url[MAXSTRING],
+      filename[MAXSTRING];
    BOOL ret;
       
    ret = GetURLandFilename(line, url, filename);
@@ -298,6 +343,9 @@ char *Execute(char *exe)
    int  nData    = 0,
         dataSize = 0;
 
+#ifdef TEST_PROCESSPAGE
+   printf("%s", exe);
+#else
    if((fp = (FILE *)popen(exe,"r"))!=NULL)
    {
       while(1)
@@ -318,6 +366,7 @@ char *Execute(char *exe)
       }
       pclose(fp);
    }
+#endif
    
    return(data);
 }
@@ -338,8 +387,118 @@ int main(int argc, char **argv)
 }
 #endif
 
-/* Prototypes */
-BOOL ProcessPage(char *reqID, char *page, char *cFile, char *passwd, BOOL verbose);
+
+
+/**  ******************************************************************/
+BOOL ProcessPage(char *reqID, char *page, char *cFile, char *passwd,
+                 BOOL verbose)
+{
+   STRINGLIST *lines    = NULL,
+      *theLine;
+    char url[MAXSTRING];
+    char exe[MAXSTRING];
+    BOOL inData = FALSE;
+    char *urlPart = NULL,
+       *filename = NULL;
+    urlPart  = (char *)malloc(2 * MAXSTRING * sizeof(char));
+    filename = (char *)malloc(2 * MAXSTRING * sizeof(char));
+    
+    page = Substitute(page, "\r", "", TRUE);
+    lines = SplitLine('\n', page);
+    
+    for(theLine=lines; theLine !=NULL; NEXT(theLine))
+    {
+        char *line;
+        if((line = mystrdup(theLine->string))==NULL)
+           return(FALSE);
+                              
+        if(inData)
+        {
+           GetURLandFilename(line, urlPart, filename);  /* $line =~ m/href=\"(.*?)\"\>(.*?)\</; */
+           filename = Substitute(filename, " ", "_", TRUE);
+           urlPart  = Substitute(urlPart, "./", "", FALSE);
+           urlPart  = Substitute(urlPart, "(", "\\(", TRUE);
+           urlPart  = Substitute(urlPart, ")", "\\)", TRUE);
+           filename = Substitute(filename, "(", "\\(", TRUE);
+           filename = Substitute(filename, ")", "\\)", TRUE);
+
+           sprintf(url, "%s/%s", gBaseURL, urlPart);
+           sprintf(exe, "curl -s --cert-type p12 --cert %s:%s --output %s %s", cFile, passwd, filename, url);
+           if(verbose) fprintf(stderr, "%s\n", exe);
+           Execute(exe);
+
+           inData = FALSE;
+        }
+        else if(StringContains(line, "Annex"))
+        {
+           inData = TRUE;            
+        }
+        else if(StringContains(line, ">Word Document"))
+        {
+           GetURLandFilename(line, urlPart, filename);  /* $line =~ m/href=\"(.*?)\"\>(.*?)\</; */
+           sprintf(filename, "%s_1_6b_Admin_Report.doc", reqID);
+           urlPart  = Substitute(urlPart, "./", "", FALSE);
+           urlPart  = Substitute(urlPart, "&", "\\&", TRUE);
+
+           sprintf(url, "%s/%s", gBaseURL, urlPart);
+           sprintf(exe, "curl -s --cert-type p12 --cert %s:%s --output %s %s", cFile, passwd, filename, url);
+
+           if(verbose) fprintf(stderr, "%s\n", exe);
+           Execute(exe);
+        }
+        free(line);
+    }
+    free(urlPart);
+    free(filename);
+    return(TRUE);
+}
+
+#ifdef TEST_PROCESSPAGE
+#   define TEST 1
+int main(int argc, char **argv)
+{
+   char *data    = NULL,
+        ch;
+   int  nData    = 0,
+        dataSize = 0;
+    FILE *fp;
+
+    char cFile[MAXSTRING],
+         passwdFile[MAXSTRING],
+         passwd[MAXSTRING],
+         *cDir = "/home/amartin/work/inn/idmis";
+
+    sprintf(cFile,  "%s/Martin-cert.p12",    cDir);
+    sprintf(passwdFile,  "%s/Martin-cert.passwd", cDir);
+
+    ReadPasswd(passwdFile, passwd);
+    
+    if((fp=fopen("t/test.html", "r"))!=NULL)
+    {
+      while(1)
+      {
+         ch=fgetc(fp);
+         if(nData >= dataSize)
+         {
+            dataSize += CHUNK;
+            if((data = realloc(data, dataSize*sizeof(char)))==NULL)
+               return(1);
+         }
+         data[nData++] = ch;
+         if(ch==EOF)
+         {
+            data[nData-1] = '\0';
+            break;
+         }
+      }
+      fclose(fp);
+    }
+    
+    ProcessPage("12079", data, cFile, passwd, TRUE);
+
+    return(0);
+}
+#endif
 
 
 /*************************************************************************************/
@@ -376,65 +535,3 @@ int main(int argc, char **argv)
 }
 #endif /* TEST */
 
-/**  ******************************************************************/
-/*************************************************************************************/
-BOOL ProcessPage(char *reqID, char *page, char *cFile, char *passwd, BOOL verbose)
-{
-   STRINGLIST *lines    = NULL,
-      *theLine;
-    char url[MAXSTRING];
-    char exe[MAXSTRING];
-    BOOL inData = FALSE;
-    char *urlPart,
-       *filename;
-    urlPart  = (char *)malloc(MAXSTRING * sizeof(char));
-    filename = (char *)malloc(MAXSTRING * sizeof(char));
-    
-    page = Substitute(page, "\r", "", TRUE);
-    lines = SplitLine('\n', page);
-    
-    for(theLine=lines; theLine !=NULL; NEXT(theLine))
-    {
-        char *line;
-        if((line = strdup(theLine->string))==NULL)
-           return(FALSE);
-                              
-        if(inData)
-        {
-           GetURLandFilename(line, urlPart, filename);  /* $line =~ m/href=\"(.*?)\"\>(.*?)\</; */
-           filename = Substitute(filename, " ", "_", TRUE);
-           urlPart  = Substitute(urlPart, "./", "", FALSE);
-           urlPart  = Substitute(urlPart, "(", "\\(", TRUE);
-           urlPart  = Substitute(urlPart, ")", "\\)", TRUE);
-           filename  = Substitute(filename, "(", "\\(", TRUE);
-           filename = Substitute(filename, ")", "\\)", TRUE);
-
-           sprintf(url, "%s/%s", gBaseURL, urlPart);
-           sprintf(exe, "curl -s --cert-type p12 --cert %s:%s --output %s %s", cFile, passwd, filename, url);
-           if(verbose) fprintf(stderr, "%s\n", exe);
-           Execute(exe);
-
-           inData = FALSE;
-        }
-        else if(StringContains(line, "Annex"))
-        {
-           inData = TRUE;            
-        }
-        else if(StringContains(line, ">Word Document"))
-        {
-           GetURLandFilename(line, urlPart, filename);  /* $line =~ m/href=\"(.*?)\"\>(.*?)\</; */
-           sprintf(filename, "%s_1_6b_Admin_Report.doc", reqID);
-           urlPart  = Substitute(urlPart, "./", "", FALSE);
-           urlPart  = Substitute(urlPart, "&", "\\&", TRUE);
-
-           sprintf(url, "%s/%s", gBaseURL, urlPart);
-           sprintf(exe, "curl -s --cert-type p12 --cert %s:%s --output %s %s", cFile, passwd, filename, url);
-
-           if(verbose) fprintf(stderr, "%s\n", exe);
-           Execute(exe);
-        }
-    }
-    free(urlPart);
-    free(filename);
-    return(TRUE);
-}
