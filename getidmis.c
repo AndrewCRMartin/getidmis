@@ -1,4 +1,4 @@
-#define TEST_STRINGCONTAINS
+#define TEST_READPASSWD
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -228,7 +228,7 @@ int main(int argc, char **argv)
 #endif
 
 
-/**  ******************************************************************/
+/** WORKING ******************************************************************/
 BOOL StringContains(char *string, char *contains)
 {
    if(strstr(string, contains)!=NULL)
@@ -253,7 +253,7 @@ int main(int argc, char **argv)
 }
 #endif
 
-/*************************************************************************************/
+/** WORKING ******************************************************************/
 BOOL ReadPasswd(char *passwdFile, char *passwd)
 {
    FILE *fp;
@@ -267,7 +267,28 @@ BOOL ReadPasswd(char *passwdFile, char *passwd)
    
    return(FALSE);
 }
+#ifdef TEST_READPASSWD
+#   define TEST 1
+int main(int argc, char **argv)
+{
+    char cFile[MAXSTRING],
+         passwdFile[MAXSTRING],
+         passwd[MAXSTRING],
+         *cDir = "/home/amartin/work/inn/idmis";
 
+    sprintf(cFile,  "%s/Martin-cert.p12",    cDir);
+    sprintf(passwdFile,  "%s/Martin-cert.passwd", cDir);
+
+    ReadPasswd(passwdFile, passwd);
+
+    printf("pwd: %s\n", passwd);
+
+    return(0);
+   
+}
+#endif
+
+/**  ******************************************************************/
 /*************************************************************************************/
 #define CHUNK 128
 char *Execute(char *exe)
@@ -301,6 +322,7 @@ char *Execute(char *exe)
    return(data);
 }
 
+/* Prototypes */
 BOOL ProcessPage(char *reqID, char *page, char *cFile, char *passwd, BOOL verbose);
 
 
@@ -338,6 +360,7 @@ int main(int argc, char **argv)
 }
 #endif /* TEST */
 
+/**  ******************************************************************/
 /*************************************************************************************/
 BOOL ProcessPage(char *reqID, char *page, char *cFile, char *passwd, BOOL verbose)
 {
