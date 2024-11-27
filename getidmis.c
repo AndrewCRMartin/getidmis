@@ -1,4 +1,4 @@
-#define TEST_READPASSWD
+#define TEST_EXECUTE
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -288,31 +288,31 @@ int main(int argc, char **argv)
 }
 #endif
 
-/**  ******************************************************************/
-/*************************************************************************************/
+/** WORKING ******************************************************************/
 #define CHUNK 128
 char *Execute(char *exe)
 {
    FILE *fp;
-   char *data=NULL,
-      ch;
-   int  nData=0,
-      dataSize=0;
+   char *data    = NULL,
+        ch;
+   int  nData    = 0,
+        dataSize = 0;
 
    if((fp = (FILE *)popen(exe,"r"))!=NULL)
    {
       while(1)
       {
          ch=fgetc(fp);
-         if((nData+1) > dataSize)
+         if(nData >= dataSize)
          {
             dataSize += CHUNK;
-            data = realloc(data, dataSize);
+            if((data = realloc(data, dataSize*sizeof(char)))==NULL)
+               return(NULL);
          }
-         data[dataSize++] = ch;
+         data[nData++] = ch;
          if(ch==EOF)
          {
-            data[dataSize-1] = '\0';
+            data[nData-1] = '\0';
             break;
          }
       }
@@ -321,6 +321,22 @@ char *Execute(char *exe)
    
    return(data);
 }
+#ifdef TEST_EXECUTE
+#   define TEST 1
+int main(int argc, char **argv)
+{
+    char *exe = "ls -ltr /tmp";
+    char *data;
+
+    if((data = Execute(exe))!=NULL)
+    {
+       printf("%s", data);
+       FREE(data);
+    }
+
+    return(0);
+}
+#endif
 
 /* Prototypes */
 BOOL ProcessPage(char *reqID, char *page, char *cFile, char *passwd, BOOL verbose);
