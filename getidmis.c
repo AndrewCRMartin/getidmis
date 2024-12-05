@@ -34,6 +34,7 @@ BOOL ProcessPage(char *reqID, char *page, char *cFile, char *passwd,
                  BOOL verbose);
 char *strdup(const char *s);
 char *Substitute(char *string, char *old, char *new, BOOL global);
+static char *doSubstitute(char *string, char *old, char *new, BOOL global, ULONG *offsetNum);
 
 #define MAXSTRING 1024
 #define HUGEBUFF 1024
@@ -472,7 +473,7 @@ int main(int argc, char **argv)
 
 
 /*************************************************************************************/
-char *Substitute(char *string, char *old, char *new, BOOL global)
+char *oldSubstitute(char *string, char *old, char *new, BOOL global)
 {
    char *newString = NULL,
       *offset = NULL,
@@ -512,6 +513,59 @@ char *Substitute(char *string, char *old, char *new, BOOL global)
     
     return(newString);
 }
+
+char *Substitute(char *string, char *old, char *new, BOOL global)
+{
+   ULONG offset = 0;
+   char *newString = NULL;
+
+   newString = doSubstitute(string, old, new, global, &offset);
+   return(newString);
+}
+
+static char *doSubstitute(char *string, char *old, char *new, BOOL global, ULONG *offsetNum)
+{   
+   char *newString = NULL,
+      *offset = NULL,
+      *chp,
+      *chpNew;
+   ULONG newLen,
+      nChar;
+   
+   /* old string not found */
+   if((offset = strstr(string+(*offsetNum), old))==NULL)
+      return(string);
+   
+   *offsetNum = (offset - string) + strlen(new);
+   
+   newLen = strlen(string) - strlen(old) + strlen(new) + 1;
+   printf("oldLen: %ld  newLen: %ld  ", strlen(string), newLen);
+   if((newString = (char *)malloc(newLen * sizeof(char)))==NULL)
+      return(NULL);
+   
+   nChar = 0;
+   /* First part */
+   for(chp=string; chp!=offset; chp++)
+      newString[nChar++] = *chp;
+   /* New part */
+   for(chpNew=new; *chpNew!='\0'; chpNew++)
+      newString[nChar++] = *chpNew;
+   /* Last part */
+   for(chp=chp+strlen(old); *chp!='\0'; chp++)
+      newString[nChar++] = *chp;
+   /* Terminate */
+   printf("nChar %ld\n", nChar);
+   fflush(stdout);
+   newString[nChar] = '\0';
+   free(string);
+   
+   /* If it's global, recurse */
+   if(global)
+      newString = doSubstitute(newString, old, new, global, offsetNum);
+   
+   return(newString);
+}
+
 
 #ifdef TEST_SUBSTITUTE
 #   define TEST 1
