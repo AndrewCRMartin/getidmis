@@ -1,20 +1,51 @@
-/*
-  There is still a problem in Substitute() - if we malloc an extra 1000 bytes it doesn't core dump
-  when building the url, but it does in doing the & substituteion at line 129 as the recursion doesn't
-  return!
+/************************************************************************/
+/**
 
-  The problem is with:
-     urlPart  = Substitute(urlPart, "&", "\\&", TRUE);
-  Because we are replacing & with \&, when we search in the next recursion we just find the same &.
+   Program:    getidmis
+   \file       getidmis.c
+   
+   \version    V1.0
+   \date       05.12.24   
+   \brief      Grab a set of files from IDMIS
+   
+   \copyright  Prof. Andrew C. R. Martin 2024
+   \author     Prof. Andrew C. R. Martin
+   \par
+               abYinformatics, Ltd.
+   \par
+               andrew@bioinf.org.uk
+               andrew@abyinformatics.com
+               
+**************************************************************************
 
-  So we need a doSubstitute() which is the recursive routine and also takes an offset into where
-  to start searching.
+   This program is not in the public domain, but it may be copied
+   according to the conditions laid out in the accompanying file
+   COPYING.DOC
 
+   The code may be modified as required, but any modifications must be
+   documented so that the person responsible can be identified.
+
+   The code may not be sold commercially or included as part of a 
+   commercial product except as described in the file COPYING.DOC.
+
+**************************************************************************
+
+   Description:
+   ============
+
+**************************************************************************
+
+   Usage:
+   ======
+
+**************************************************************************
+
+   Revision History:
+   =================
+
+*************************************************************************/
+/* Includes
 */
-
-
-#undef TEST_GETURLANDFILENAME
-#define TEST_SUBSTITUTE
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -22,6 +53,10 @@
 #include "bioplib/general.h"
 #include "bioplib/macros.h"
 
+
+/************************************************************************/
+/* Defines and macros
+*/
 #if !defined(__APPLE__) && !defined(MS_WINDOWS) && !defined(__USE_POSIX2)
 extern FILE *popen(const char *, const char *);
 #endif
@@ -29,28 +64,98 @@ extern FILE *popen(const char *, const char *);
 extern int pclose(FILE *);
 #endif
 
-/* Prototypes */
-BOOL ProcessPage(char *reqID, char *page, char *cFile, char *passwd,
-                 BOOL verbose);
-char *strdup(const char *s);
-char *Substitute(char *string, char *old, char *new, BOOL global);
-static char *doSubstitute(char *string, char *old, char *new, BOOL global, ULONG *offsetNum);
-
 #define MAXSTRING 1024
-#define HUGEBUFF 1024
-char *gBaseURL = "https://extranets.who.int/inn";
-/*
-typedef short int BOOL;
-#define TRUE 1
-#define FALSE 0
-*/
+#define HUGEBUFF  1024
+#define CHUNK     128
 
+/************************************************************************/
+/* Globals
+*/
+char *gBaseURL = "https://extranets.who.int/inn";
+
+/************************************************************************/
+/* Prototypes
+*/
+STRINGLIST *SplitLine(char splitChar, char *page);
+BOOL GetURLandFilename(char *line, char *url, char *filename);
+BOOL StringContains(char *string, char *contains);
+BOOL ReadPasswd(char *passwdFile, char *passwd);
+char *Execute(char *exe);
+char *ProcessPage(char *reqID, char *page, char *cFile, char *passwd,
+                 BOOL verbose);
+char *Substitute(char *string, char *old, char *new, BOOL global);
+static char *doSubstitute(char *string, char *old, char *new,
+                          BOOL global, ULONG *offsetNum);
+
+
+/************************************************************************/
+/* Tests
+   -----
+   Select one of these if you wish to run a test, by changing
+   #undef to #define
+*/
+#undef TEST_SPLITLINE
+#undef TEST_GETURLANDFILENAME
+#undef TEST_STRINGCONTAINS
+#undef TEST_READPASSWD
+#undef TEST_EXECUTE
+#undef TEST_PROCESSPAGE
+#undef TEST_SUBSTITUTE
+
+#if defined(TEST_SPLITLINE)      || defined(TEST_SUBSTITUTE)  || \
+    defined(TEST_STRINGCONTAINS) || defined(TEST_READPASSWD)  || \
+    defined(TEST_EXECUTE)        || defined(TEST_PROCESSPAGE) || \
+    defined(TEST_GETURLANDFILENAME)
+#   define TEST
+#   include "t/test.c"
+#endif
+
+/************************************************************************/
+#ifndef TEST
+int main(int argc, char **argv)
+{
+    char tplURL[MAXSTRING],
+         cFile[MAXSTRING],
+         passwdFile[MAXSTRING],
+         passwd[MAXSTRING],
+         url[MAXSTRING],
+         exe[MAXSTRING],
+         *cDir = "/home/amartin/work/inn/idmis";
+    BOOL verbose = TRUE;
+
+    sprintf(tplURL,
+            "%s/Report.php?Request=%%s&Report=INN_Phase_6b_Admin_Report",
+            gBaseURL);
+    sprintf(cFile,  "%s/Martin-cert.p12",    cDir);
+    sprintf(passwdFile,  "%s/Martin-cert.passwd", cDir);
+
+    ReadPasswd(passwdFile, passwd);
+
+    argc--; argv++;
+    while(argc)
+    {
+        char *page;
+        sprintf(url, tplURL, *argv);
+        sprintf(exe,
+                "curl -s --cert-type p12 --cert %s:%s %s",
+                cFile, passwd, url);
+        page = Execute(exe);
+        page = ProcessPage(*argv, page, cFile, passwd, verbose);
+        FREE(page);
+        argc--; argv++;
+    }
+    return(0);
+}
+#endif /* TEST                                                          */
+
+
+/************************************************************************/
 char *mystrdup(char *in)
 {
    char *out;
    ULONG inlen;
    inlen = strlen(in) + 8;
-#ifdef TEST
+#ifdef DEBUG
    printf("Input length: %ld\n", inlen);
 #endif
    out = (char *)malloc(inlen*sizeof(char));
@@ -59,7 +164,7 @@ char *mystrdup(char *in)
 }
 
 
-/** WORKING ******************************************************************/
+/************************************************************************/
 STRINGLIST *SplitLine(char splitChar, char *page)
 {
    ULONG posInPage = 0,
@@ -74,14 +179,14 @@ STRINGLIST *SplitLine(char splitChar, char *page)
 
    pageSize = strlen(pageCopy);
    
-/*
+#ifdef DEBUG
    printf(">>> lens: %d %ld\n", strlen(page), pageSize);
    printf(">>> '%c'\n", pageCopy[pageSize]);
-*/
+#endif
    
    for(posInPage=0; posInPage<pageSize; posInPage++)
    {
-#ifdef TEST
+#ifdef DEBUG
       printf("%c", pageCopy[posInPage]);
       printf("%ld,", posInPage);
 #endif
@@ -89,7 +194,8 @@ STRINGLIST *SplitLine(char splitChar, char *page)
       if(pageCopy[posInPage] == splitChar)
       {
          pageCopy[posInPage] = '\0';
-         if((strings = blStoreString(strings, pageCopy+lastPosInPage))==NULL)
+         if((strings = blStoreString(strings, pageCopy+lastPosInPage))
+            ==NULL)
          {
             free(pageCopy);
             return(NULL);
@@ -100,7 +206,7 @@ STRINGLIST *SplitLine(char splitChar, char *page)
       }
    }
    
-   /* and the last one */
+   /* and the last one                                                  */
    if(strlen(pageCopy+lastPosInPage) > 1)
    {
       if((strings = blStoreString(strings, pageCopy+lastPosInPage))==NULL)
@@ -113,30 +219,9 @@ STRINGLIST *SplitLine(char splitChar, char *page)
    free(pageCopy);
    return(strings);
 }
-#ifdef TEST_SPLITLINE
-#   define TEST 1
-int main(int argc, char **argv)
-{
-   
-   STRINGLIST *strings = NULL, *s;
-
-   strings = SplitLine('\n', "Once upon a time\nThere was a piece of code\n\
-That needed to be tested\n");
-   for(s=strings; s!=NULL; NEXT(s))
-   {
-      printf("%s\n", s->string);
-   }
-   return(0);
-}
-#endif
 
 
-/** WORKING ******************************************************************/
-/*************************************************************************************/
-
-
-/** WORKING  ******************************************************************/
-
+/************************************************************************/
 BOOL GetURLandFilename(char *line, char *url, char *filename)
 {
    /* $line =~ m/href=\"(.*?)\"\>(.*?)\</;
@@ -144,56 +229,51 @@ BOOL GetURLandFilename(char *line, char *url, char *filename)
     */
    int nURL = 0;
    int nFilename = 0;
-   char ch;
-   
    char *chp = NULL;
+
    if((chp = strstr(line, "href"))==NULL)
       return(FALSE);
-
-   chp += 4; /* Skip the 'href' */
    
-   /* Found href, eat until we have the = */
+   /* Skip over the href and eat until we have the =                    */
+   chp += 4;
    while(*chp != '=')
    {
       if(*chp == '\0')
          return(FALSE);
       chp++;
    }
-   chp++; /* Skip the = */
 
-   /* Found =, eat until we have the " or ' */
+   /* Skip over the = and eat until we have the " or '                  */
+   chp++;
    while((*chp != '"') && (*chp != '\''))
    {
       if(*chp == '\0')
          return(FALSE);
       chp++;
    }
-   chp++; /* Skip the ' or " */
 
-   /* Copy into URL until we reach a ' or " */
+   /* Skip the ' or " and copy into URL until we reach a ' or "         */
+   chp++; 
    while((*chp != '"') && (*chp != '\''))
    {
       if(*chp == '\0')
          return(FALSE);
-/*      url[nURL++] = *chp; */
-      ch = *chp;
-      url[nURL] = ch;
-      nURL++;
+      url[nURL++] = *chp;
       chp++;
    }
    url[nURL] = '\0';
-   chp++; /* Skip the ' or " */
    
-   /* Found ' or ", eat until we have the > */
+   /* Skip the ' or " and eat until we have the >                       */
+   chp++; 
    while(*chp != '>')
    {
       if(*chp == '\0')
          return(FALSE);
       chp++;
    }
-   chp++; /* Skip the > */
 
-   /* Copy into filename until we reach a < */
+   /* Skip the > and copy into filename until we reach a <              */
+   chp++; 
    while(*chp != '<')
    {
       if(*chp == '\0')
@@ -206,56 +286,17 @@ BOOL GetURLandFilename(char *line, char *url, char *filename)
    return(TRUE);
 }
 
-#ifdef TEST_GETURLANDFILENAME
-#   define TEST 1
-int main(int argc, char **argv)
-{
-   /*
-   char *line = "Some text \
-<a href='http://xyz.com/something'>MyFileName.txt</a> More text";
-   */
-   char *line = "\t\t\t\t\t\t\t\t</td><td><table><tbody><tr><td><a href=\"./INN_Requests/12079/Document_Info/12079_decobatamab_dezotansine.pdf\">12079_decobatamab_dezotansine.pdf</a></td></tr></tbody></table></td></tr><tr><td>";
-   char url[MAXSTRING],
-      filename[MAXSTRING];
-   BOOL ret;
-      
-   ret = GetURLandFilename(line, url, filename);
-   
-   printf("ret: %s\n", ret?"TRUE":"FALSE");
-   printf("url: %s\n", url);
-   printf("fnm: %s\n", filename);
-   return(0);
-   
-}
-#endif
 
-
-/** WORKING ******************************************************************/
+/************************************************************************/
 BOOL StringContains(char *string, char *contains)
 {
    if(strstr(string, contains)!=NULL)
       return(TRUE);
    return(FALSE);
 }
-#ifdef TEST_STRINGCONTAINS
-#   define TEST 1
-int main(int argc, char **argv)
-{
-   char *line = "Some text which I want to test";
-   BOOL ret;
-      
-   ret = StringContains(line, "text");
-   printf("'text' %s\n", ret?"TRUE":"FALSE");
 
-   ret = StringContains(line, "elephant");
-   printf("'elephant' %s\n", ret?"TRUE":"FALSE");
 
-   return(0);
-   
-}
-#endif
-
-/** WORKING ******************************************************************/
+/************************************************************************/
 BOOL ReadPasswd(char *passwdFile, char *passwd)
 {
    FILE *fp;
@@ -269,40 +310,21 @@ BOOL ReadPasswd(char *passwdFile, char *passwd)
    
    return(FALSE);
 }
-#ifdef TEST_READPASSWD
-#   define TEST 1
-int main(int argc, char **argv)
-{
-    char cFile[MAXSTRING],
-         passwdFile[MAXSTRING],
-         passwd[MAXSTRING],
-         *cDir = "/home/amartin/work/inn/idmis";
 
-    sprintf(cFile,  "%s/Martin-cert.p12",    cDir);
-    sprintf(passwdFile,  "%s/Martin-cert.passwd", cDir);
 
-    ReadPasswd(passwdFile, passwd);
-
-    printf("pwd: %s\n", passwd);
-
-    return(0);
-   
-}
-#endif
-
-/** WORKING ******************************************************************/
-#define CHUNK 128
+/************************************************************************/
 char *Execute(char *exe)
 {
-   FILE *fp;
-   char *data    = NULL,
-        ch;
-   int  nData    = 0,
-        dataSize = 0;
+   char *data = NULL;
 
 #ifdef TEST_PROCESSPAGE
    printf("%s\n", exe);
 #else
+   FILE *fp;
+   char ch;
+   int  nData    = 0,
+        dataSize = 0;
+
    if((fp = (FILE *)popen(exe,"r"))!=NULL)
    {
       while(1)
@@ -327,28 +349,11 @@ char *Execute(char *exe)
    
    return(data);
 }
-#ifdef TEST_EXECUTE
-#   define TEST 1
-int main(int argc, char **argv)
-{
-    char *exe = "ls -ltr /tmp";
-    char *data;
-
-    if((data = Execute(exe))!=NULL)
-    {
-       printf("%s", data);
-       FREE(data);
-    }
-
-    return(0);
-}
-#endif
 
 
-
-/**  ******************************************************************/
-BOOL ProcessPage(char *reqID, char *page, char *cFile, char *passwd,
-                 BOOL verbose)
+/************************************************************************/
+char *ProcessPage(char *reqID, char *page, char *cFile, char *passwd,
+                  BOOL verbose)
 {
    STRINGLIST *lines    = NULL,
       *theLine;
@@ -363,19 +368,25 @@ BOOL ProcessPage(char *reqID, char *page, char *cFile, char *passwd,
     {
         char *line;
         if((line = mystrdup(theLine->string))==NULL)
-           return(FALSE);
+        {
+           FREE(page);
+           return(NULL);
+        }
 
+#ifdef DEBUG
         fprintf(stderr,"%s\n", line);
+#endif
 
         if(inData)
         {
-           char *urlPart = NULL,
-              *filename = NULL;
+           char *urlPart  = NULL,
+                *filename = NULL;
            
-           urlPart  = (char *)malloc(2 * MAXSTRING * sizeof(char));
-           filename = (char *)malloc(2 * MAXSTRING * sizeof(char));
-    
-           GetURLandFilename(line, urlPart, filename);  /* $line =~ m/href=\"(.*?)\"\>(.*?)\</; */
+           urlPart  = (char *)malloc(MAXSTRING * sizeof(char));
+           filename = (char *)malloc(MAXSTRING * sizeof(char));
+
+           /* $line =~ m/href=\"(.*?)\"\>(.*?)\</;                      */
+           GetURLandFilename(line, urlPart, filename);  
            filename = Substitute(filename, " ", "_", TRUE);
            urlPart  = Substitute(urlPart, "./", "", FALSE);
            urlPart  = Substitute(urlPart, "(", "\\(", TRUE);
@@ -384,7 +395,9 @@ BOOL ProcessPage(char *reqID, char *page, char *cFile, char *passwd,
            filename = Substitute(filename, ")", "\\)", TRUE);
 
            sprintf(url, "%s/%s", gBaseURL, urlPart);
-           sprintf(exe, "curl -s --cert-type p12 --cert %s:%s --output %s %s", cFile, passwd, filename, url);
+           sprintf(exe,
+                   "curl -s --cert-type p12 --cert %s:%s --output %s %s",
+                   cFile, passwd, filename, url);
            FREE(urlPart);
            FREE(filename);
 
@@ -405,13 +418,16 @@ BOOL ProcessPage(char *reqID, char *page, char *cFile, char *passwd,
            urlPart  = (char *)malloc(2 * MAXSTRING * sizeof(char));
            filename = (char *)malloc(2 * MAXSTRING * sizeof(char));
 
-           GetURLandFilename(line, urlPart, filename);  /* $line =~ m/href=\"(.*?)\"\>(.*?)\</; */
+           /* $line =~ m/href=\"(.*?)\"\>(.*?)\</;                      */
+           GetURLandFilename(line, urlPart, filename);  
            sprintf(filename, "%s_1_6b_Admin_Report.doc", reqID);
            urlPart  = Substitute(urlPart, "./", "", FALSE);
            urlPart  = Substitute(urlPart, "&", "\\&", TRUE);
 
            sprintf(url, "%s/%s", gBaseURL, urlPart);
-           sprintf(exe, "curl -s --cert-type p12 --cert %s:%s --output %s %s", cFile, passwd, filename, url);
+           sprintf(exe,
+                   "curl -s --cert-type p12 --cert %s:%s --output %s %s",
+                   cFile, passwd, filename, url);
            FREE(urlPart);
            FREE(filename);
 
@@ -420,100 +436,11 @@ BOOL ProcessPage(char *reqID, char *page, char *cFile, char *passwd,
         }
         free(line);
     }
-    return(TRUE);
+    return(page);
 }
 
-#ifdef TEST_PROCESSPAGE
-#   define TEST 1
-int main(int argc, char **argv)
-{
-   char *data    = NULL,
-        ch;
-   int  nData    = 0,
-        dataSize = 0;
-    FILE *fp;
 
-    char cFile[MAXSTRING],
-         passwdFile[MAXSTRING],
-         passwd[MAXSTRING],
-         *cDir = "/home/amartin/work/inn/idmis";
-
-    sprintf(cFile,  "%s/Martin-cert.p12",    cDir);
-    sprintf(passwdFile,  "%s/Martin-cert.passwd", cDir);
-
-    ReadPasswd(passwdFile, passwd);
-    
-    if((fp=fopen("t/test.html", "r"))!=NULL)
-    {
-      while(1)
-      {
-         ch=fgetc(fp);
-         if(nData >= dataSize)
-         {
-            dataSize += CHUNK;
-            if((data = realloc(data, dataSize*sizeof(char)))==NULL)
-               return(1);
-         }
-         data[nData++] = ch;
-         if(ch==EOF)
-         {
-            data[nData-1] = '\0';
-            break;
-         }
-      }
-      fclose(fp);
-    }
-    
-    ProcessPage("12079", data, cFile, passwd, TRUE);
-
-    return(0);
-}
-#endif
-
-
-
-/*************************************************************************************/
-char *oldSubstitute(char *string, char *old, char *new, BOOL global)
-{
-   char *newString = NULL,
-      *offset = NULL,
-      *chp,
-      *chpNew;
-   ULONG newLen,
-      nChar;
-
-   /* old string not found */
-   if((offset = strstr(string, old))==NULL)
-      return(string);
-    
-    newLen = strlen(string) - strlen(old) + strlen(new) + 1;
-    printf("oldLen: %ld  newLen: %ld  ", strlen(string), newLen);
-    if((newString = (char *)malloc(newLen * sizeof(char)))==NULL)
-       return(NULL);
-
-    nChar = 0;
-    /* First part */
-    for(chp=string; chp!=offset; chp++)
-       newString[nChar++] = *chp;
-    /* New part */
-    for(chpNew=new; *chpNew!='\0'; chpNew++)
-       newString[nChar++] = *chpNew;
-    /* Last part */
-    for(chp=chp+strlen(old); *chp!='\0'; chp++)
-       newString[nChar++] = *chp;
-    /* Terminate */
-    printf("nChar %ld\n", nChar);
-    fflush(stdout);
-    newString[nChar] = '\0';
-    free(string);
-
-    /* If it's global, recurse */
-    if(global)
-       newString = Substitute(newString, old, new, global);
-    
-    return(newString);
-}
-
+/************************************************************************/
 char *Substitute(char *string, char *old, char *new, BOOL global)
 {
    ULONG offset = 0;
@@ -523,7 +450,10 @@ char *Substitute(char *string, char *old, char *new, BOOL global)
    return(newString);
 }
 
-static char *doSubstitute(char *string, char *old, char *new, BOOL global, ULONG *offsetNum)
+
+/************************************************************************/
+static char *doSubstitute(char *string, char *old, char *new, BOOL global,
+                          ULONG *offsetNum)
 {   
    char *newString = NULL,
       *offset = NULL,
@@ -532,99 +462,41 @@ static char *doSubstitute(char *string, char *old, char *new, BOOL global, ULONG
    ULONG newLen,
       nChar;
    
-   /* old string not found */
+   /* Old string was not found                                          */
    if((offset = strstr(string+(*offsetNum), old))==NULL)
       return(string);
    
    *offsetNum = (offset - string) + strlen(new);
    
    newLen = strlen(string) - strlen(old) + strlen(new) + 1;
+#ifdef DEBUG
    printf("oldLen: %ld  newLen: %ld  ", strlen(string), newLen);
+#endif
    if((newString = (char *)malloc(newLen * sizeof(char)))==NULL)
       return(NULL);
    
    nChar = 0;
-   /* First part */
+
+   /* First part                                                        */
    for(chp=string; chp!=offset; chp++)
       newString[nChar++] = *chp;
-   /* New part */
+   /* New part                                                          */
    for(chpNew=new; *chpNew!='\0'; chpNew++)
       newString[nChar++] = *chpNew;
-   /* Last part */
+   /* Last part                                                         */
    for(chp=chp+strlen(old); *chp!='\0'; chp++)
       newString[nChar++] = *chp;
-   /* Terminate */
+#ifdef DEBUG
    printf("nChar %ld\n", nChar);
    fflush(stdout);
+#endif
+   /* Terminate and free the input string                               */
    newString[nChar] = '\0';
    free(string);
    
-   /* If it's global, recurse */
+   /* If it's global, recurse                                           */
    if(global)
       newString = doSubstitute(newString, old, new, global, offsetNum);
    
    return(newString);
 }
-
-
-#ifdef TEST_SUBSTITUTE
-#   define TEST 1
-int main(int argc, char **argv)
-{
-   char *string;
-
-   string = (char *)malloc(200*sizeof(char));
-   strcpy(string,"Once upon a time\nThere was a piece of code\n\
-That needed to be tested");
-   string = Substitute(string, "\n", "|", TRUE);
-   printf("%s\n", string);
-   FREE(string);
-
-   string = (char *)malloc(200*sizeof(char));
-   strcpy(string,"This & is & a & string & with & lots & of & ampersands");
-   string = Substitute(string, "&", "\\&", TRUE);
-   printf("%s\n", string);
-   FREE(string);
-
-   return(0);
-   
-}
-#endif
-
-
-/*************************************************************************************/
-#ifndef TEST
-int main(int argc, char **argv)
-{
-    char tplURL[MAXSTRING],
-         cFile[MAXSTRING],
-         passwdFile[MAXSTRING],
-         passwd[MAXSTRING],
-         url[MAXSTRING],
-         exe[MAXSTRING],
-         *cDir = "/home/amartin/work/inn/idmis";
-    BOOL verbose = TRUE;
-
-    sprintf(tplURL, "%s/Report.php?Request=%%s&Report=INN_Phase_6b_Admin_Report", gBaseURL);
-    sprintf(cFile,  "%s/Martin-cert.p12",    cDir);
-    sprintf(passwdFile,  "%s/Martin-cert.passwd", cDir);
-
-    ReadPasswd(passwdFile, passwd);
-
-    argc--; argv++;
-    while(argc)
-    {
-        char *page;
-        sprintf(url, tplURL, *argv);
-        sprintf(exe, "curl -s --cert-type p12 --cert %s:%s %s", cFile, passwd, url);
-        page = Execute(exe);
-        ProcessPage(*argv, page, cFile, passwd, verbose);
-        free(page);
-        argc--; argv++;
-    }
-    return(0);
-}
-#endif /* TEST */
-
-
-
