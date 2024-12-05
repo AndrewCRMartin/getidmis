@@ -14,7 +14,7 @@
 
 
 #undef TEST_GETURLANDFILENAME
-#define TEST_PROCESSPAGE
+#define TEST_SUBSTITUTE
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -33,6 +33,7 @@ extern int pclose(FILE *);
 BOOL ProcessPage(char *reqID, char *page, char *cFile, char *passwd,
                  BOOL verbose);
 char *strdup(const char *s);
+char *Substitute(char *string, char *old, char *new, BOOL global);
 
 #define MAXSTRING 1024
 #define HUGEBUFF 1024
@@ -113,7 +114,6 @@ STRINGLIST *SplitLine(char splitChar, char *page)
 }
 #ifdef TEST_SPLITLINE
 #   define TEST 1
-
 int main(int argc, char **argv)
 {
    
@@ -132,62 +132,6 @@ That needed to be tested\n");
 
 /** WORKING ******************************************************************/
 /*************************************************************************************/
-char *Substitute(char *string, char *old, char *new, BOOL global)
-{
-   char *newString = NULL,
-      *offset = NULL,
-      *chp,
-      *chpNew;
-   int newLen;
-   int nChar;
-
-   /* old string not found */
-   if((offset = strstr(string, old))==NULL)
-      return(string);
-    
-    newLen = strlen(string) - strlen(old) + strlen(new) + 1;
-    printf("oldLen: %d  newLen: %d  ", strlen(string), newLen);
-    if((newString = (char *)malloc(newLen * sizeof(char)))==NULL)
-       return(NULL);
-
-    nChar = 0;
-    /* First part */
-    for(chp=string; chp!=offset; chp++)
-       newString[nChar++] = *chp;
-    /* New part */
-    for(chpNew=new; *chpNew!='\0'; chpNew++)
-       newString[nChar++] = *chpNew;
-    /* Last part */
-    for(chp=chp+strlen(old); *chp!='\0'; chp++)
-       newString[nChar++] = *chp;
-    /* Terminate */
-    printf("nChar %d\n", nChar);
-    fflush(stdout);
-    newString[nChar] = '\0';
-    free(string);
-
-    /* If it's global, recurse */
-    if(global)
-       newString = Substitute(newString, old, new, global);
-    
-    return(newString);
-}
-
-#ifdef TEST_SUBSTITUTE
-#   define TEST 1
-int main(int argc, char **argv)
-{
-   char *string;
-   string = (char *)malloc(200*sizeof(char));
-   strcpy(string,"Once upon a time\nThere was a piece of code\n\
-That needed to be tested");
-
-   string = Substitute(string, "\n", "|", TRUE);
-   printf("%s\n", string);
-   return(0);
-   
-}
-#endif
 
 
 /** WORKING  ******************************************************************/
@@ -526,6 +470,74 @@ int main(int argc, char **argv)
 #endif
 
 
+
+/*************************************************************************************/
+char *Substitute(char *string, char *old, char *new, BOOL global)
+{
+   char *newString = NULL,
+      *offset = NULL,
+      *chp,
+      *chpNew;
+   ULONG newLen,
+      nChar;
+
+   /* old string not found */
+   if((offset = strstr(string, old))==NULL)
+      return(string);
+    
+    newLen = strlen(string) - strlen(old) + strlen(new) + 1;
+    printf("oldLen: %ld  newLen: %ld  ", strlen(string), newLen);
+    if((newString = (char *)malloc(newLen * sizeof(char)))==NULL)
+       return(NULL);
+
+    nChar = 0;
+    /* First part */
+    for(chp=string; chp!=offset; chp++)
+       newString[nChar++] = *chp;
+    /* New part */
+    for(chpNew=new; *chpNew!='\0'; chpNew++)
+       newString[nChar++] = *chpNew;
+    /* Last part */
+    for(chp=chp+strlen(old); *chp!='\0'; chp++)
+       newString[nChar++] = *chp;
+    /* Terminate */
+    printf("nChar %ld\n", nChar);
+    fflush(stdout);
+    newString[nChar] = '\0';
+    free(string);
+
+    /* If it's global, recurse */
+    if(global)
+       newString = Substitute(newString, old, new, global);
+    
+    return(newString);
+}
+
+#ifdef TEST_SUBSTITUTE
+#   define TEST 1
+int main(int argc, char **argv)
+{
+   char *string;
+
+   string = (char *)malloc(200*sizeof(char));
+   strcpy(string,"Once upon a time\nThere was a piece of code\n\
+That needed to be tested");
+   string = Substitute(string, "\n", "|", TRUE);
+   printf("%s\n", string);
+   FREE(string);
+
+   string = (char *)malloc(200*sizeof(char));
+   strcpy(string,"This & is & a & string & with & lots & of & ampersands");
+   string = Substitute(string, "&", "\\&", TRUE);
+   printf("%s\n", string);
+   FREE(string);
+
+   return(0);
+   
+}
+#endif
+
+
 /*************************************************************************************/
 #ifndef TEST
 int main(int argc, char **argv)
@@ -559,4 +571,6 @@ int main(int argc, char **argv)
     return(0);
 }
 #endif /* TEST */
+
+
 
