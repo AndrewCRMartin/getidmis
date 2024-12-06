@@ -1,7 +1,7 @@
 EXE    = getidmis
 OFILES = getidmis.o
 LIBS   = -lgen -lefence
-CFLAGS = -ansi -pedantic -Wall -Wno-format-overflow
+CFLAGS = -g -ansi -pedantic -Wall -Wno-format-overflow
 CC     = cc $(CFLAGS) -I$(HOME)/include -L$(HOME)/lib 
 
 .c.o :

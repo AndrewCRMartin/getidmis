@@ -82,13 +82,15 @@ BOOL StringContains(char *string, char *contains);
 BOOL ReadPasswd(char *passwdFile, char *passwd);
 char *Execute(char *exe);
 char *ProcessPage(char *reqID, char *page, char *cFile, char *passwd,
-                 BOOL verbose);
+                  BOOL verbose, BOOL *ok);
 char *Substitute(char *string, char *old, char *new, BOOL global);
 static char *doSubstitute(char *string, char *old, char *new,
                           BOOL global, ULONG *offsetNum);
 void Usage(void);
 BOOL ParseCmdLine(int *pArgc, char ***pArgv, char *pwfile, char *passwd, 
-                  char *certFile);
+                  char *certFile, BOOL *verbose);
+void SetFromEnvVars(char *passwdFile, char *passwd, char *certFile);
+void ShowErrors(char *page, BOOL ok, BOOL verbose, char *entry);
 
 
 /************************************************************************/
@@ -117,52 +119,110 @@ BOOL ParseCmdLine(int *pArgc, char ***pArgv, char *pwfile, char *passwd,
 #ifndef TEST
 int main(int argc, char **argv)
 {
-    char tplURL[MAXSTRING],
-         cFile[MAXSTRING],
-         passwdFile[MAXSTRING],
-         passwd[MAXSTRING],
-         url[MAXSTRING],
-         exe[MAXSTRING],
-         *cDir = "/home/amartin/work/inn/idmis";
-    BOOL verbose = TRUE;
+   char tplURL[MAXSTRING],
+        certFile[MAXSTRING],
+        passwdFile[MAXSTRING],
+        passwd[MAXSTRING],
+        url[MAXSTRING],
+        exe[MAXSTRING];
+   BOOL verbose = FALSE;
 
-    sprintf(tplURL,
-            "%s/Report.php?Request=%%s&Report=INN_Phase_6b_Admin_Report",
-            gBaseURL);
-    sprintf(cFile,  "%s/Martin-cert.p12",    cDir);
-    sprintf(passwdFile,  "%s/Martin-cert.passwd", cDir);
+   /* Blank the password                                               */
+   passwd[0] = '\0';
+   
+   sprintf(tplURL,
+           "%s/Report.php?Request=%%s&Report=INN_Phase_6b_Admin_Report",
+           gBaseURL);
 
-    ReadPasswd(passwdFile, passwd);
-
-    if(ParseCmdLine(&argc, &argv, passwdFile, passwd, cFile))
-    {
-       while(argc)
-       {
-          char *page;
-          sprintf(url, tplURL, *argv);
-          sprintf(exe,
-                  "curl -s --cert-type p12 --cert %s:%s %s",
-                  cFile, passwd, url);
-          page = Execute(exe);
-          page = ProcessPage(*argv, page, cFile, passwd, verbose);
-          FREE(page);
-          argc--; argv++;
-       }
-    }
-    else
-    {
-       Usage();
-       return(1);
-    }
-    return(0);
+   strcpy(certFile,   "cert.p12");
+   strcpy(passwdFile, "certpw.txt");
+   
+   SetFromEnvVars(passwdFile, passwd, certFile);
+   
+   if(ParseCmdLine(&argc, &argv, passwdFile, passwd, certFile, &verbose))
+   {
+      if(passwd[0] == '\0')
+         ReadPasswd(passwdFile, passwd);
+      
+#ifdef DEBUG
+      printf("passwdFile: %s\n", passwdFile);
+      printf("passwd:     %s\n", passwd);
+      printf("certFile:   %s\n", certFile);
+      printf("Args left:  %d\n", argc);
+#endif
+      
+      while(argc)
+      {
+         char *page;
+         BOOL ok = FALSE;
+         
+         if(verbose)
+            printf("Processing: %s\n", *argv);
+         
+         sprintf(url, tplURL, *argv);
+         sprintf(exe,
+                 "curl -s --cert-type p12 --cert %s:%s %s",
+                 certFile, passwd, url);
+         page = Execute(exe);
+         page = ProcessPage(*argv, page, certFile, passwd, verbose, &ok);
+         ShowErrors(page, ok, verbose, *argv);
+         
+         FREE(page);
+         argc--; argv++;
+      }
+   }
+   else
+   {
+      Usage();
+      return(1);
+   }
+   return(0);
 }
 #endif /* TEST                                                          */
 
 
 /************************************************************************/
-/*>BOOL ParseCmdLine(int *pArgc, char ***pArgv, char *pwFile, char *passwd, 
-                  char *certFile)
-   ---------------------------------------------------------------------
+void ShowErrors(char *page, BOOL ok, BOOL verbose, char *entry)
+{
+   if(!ok)
+   {
+      printf("Failed to download any data for %s\n", entry);
+      if(verbose)
+      {
+         if((page == NULL) || (page[0] == '\0'))
+         {
+            printf("   The connection failed (certificate file or \
+password invalid?)\n");
+         }
+         else
+         {
+            printf("\n\n%s", page);
+         }            
+      }
+      else
+      {
+         printf("   Run with -v for more information\n");
+      }
+   }
+}
+
+/************************************************************************/
+void SetFromEnvVars(char *passwdFile, char *passwd, char *certFile)
+{
+   char *val = NULL;
+   
+   if((val = getenv("IDMISCERTFILE"))!=NULL)
+      strcpy(certFile, val);
+   if((val = getenv("IDMISPWDFILE"))!=NULL)
+      strcpy(passwdFile, val);
+   if((val = getenv("IDMISPASSWD"))!=NULL)
+      strcpy(passwd, val);
+}
+
+/************************************************************************/
+/*>BOOL ParseCmdLine(int *pArgc, char ***pArgv, char *pwFile,
+                     char *passwd, char *certFile)
+  ----------------------------------------------------------
 *//**
    \param[in]      argc         Argument count
    \param[in]      **argv       Argument array
@@ -179,11 +239,11 @@ int main(int argc, char **argv)
 -  02.12.22 Added -a / showAll
 */
 BOOL ParseCmdLine(int *pArgc, char ***pArgv, char *pwFile, char *passwd, 
-                  char *certFile)
+                  char *certFile, BOOL *verbose)
 {
    (*pArgc)--;
    (*pArgv)++;
-
+   
    while(*pArgc)
    {
       if((*pArgv)[0][0] == '-')
@@ -205,6 +265,9 @@ BOOL ParseCmdLine(int *pArgc, char ***pArgv, char *pwFile, char *passwd,
             (*pArgv)++;
             strcpy(certFile, (*pArgv)[0]);
             break;
+         case 'v':
+            *verbose = TRUE;
+            break;
          case 'h':
             Usage();
             return(TRUE);
@@ -212,19 +275,20 @@ BOOL ParseCmdLine(int *pArgc, char ***pArgv, char *pwFile, char *passwd,
             return(FALSE);
             break;
          }
+         
+         (*pArgc)--;
+         (*pArgv)++;
       }
       else
       {
-         /* Check that there are arguments left                    */
-         if(*pArgc < 1)
-            return(FALSE);
-         
-         return(TRUE);
+         break;
       }
-      (*pArgc)--;
-      (*pArgv)++;
    }
-
+   
+   /* Check that there are arguments left                               */
+   if(*pArgc < 1)
+      return(FALSE);
+   
    return(TRUE);
 }
 
@@ -237,13 +301,13 @@ reqnum [reqnum ...]\n");
    printf("         -c Specify the certificate file\n");
    printf("         -f Specify a file containing the password\n");
    printf("         -p Specify the password\n");
-
+   
    printf("\n`getidmis` will expect the certificate file to be called \
 `cert.p12`\n");
    printf("and present in the current directory; this can be overridden \
 using\n");
    printf("`-c` flag or the `IDMISCERTFILE` environment variable.\n");
-
+   
    printf("\nIt will expect the password to be contained in a file \
 called\n");
    printf("`certpw.txt` present in the current directory; this can be \
@@ -257,10 +321,18 @@ environment\n");
    printf("variable. Values specified on the command line take \
 precedence over\n");
    printf("values in environment variables.\n");
-
+   
    printf("\nIf both the password file and the actual password are \
 specified, the\n");
-   printf("actual password takes precedence.\n\n");
+   printf("actual password takes precedence.\n");
+   
+   printf("i.e.:\n");
+   printf("   a provided password takes precedence over the password \
+file\n");
+   printf("--and--\n");
+   printf("   values on the command line take precedence over \
+environment\n");
+   printf("   variables, which take precedence over defaults.\n\n");
 }
 
 /************************************************************************/
@@ -284,13 +356,13 @@ STRINGLIST *SplitLine(char splitChar, char *page)
    ULONG posInPage = 0,
       lastPosInPage = 0,
       pageSize = 0;
-
+   
    STRINGLIST *strings = NULL;
    char *pageCopy = NULL;
-
+   
    if((pageCopy=mystrdup(page))==NULL)
       return(NULL);
-
+   
    pageSize = strlen(pageCopy);
    
 #ifdef DEBUG
@@ -329,7 +401,7 @@ STRINGLIST *SplitLine(char splitChar, char *page)
          return(NULL);
       }
    }
-
+   
    free(pageCopy);
    return(strings);
 }
@@ -340,11 +412,11 @@ BOOL GetURLandFilename(char *line, char *url, char *filename)
 {
    /* $line =~ m/href=\"(.*?)\"\>(.*?)\</;
       href="(.*?)">(.*?)<
-    */
+   */
    int nURL = 0;
    int nFilename = 0;
    char *chp = NULL;
-
+   
    if((chp = strstr(line, "href"))==NULL)
       return(FALSE);
    
@@ -356,7 +428,7 @@ BOOL GetURLandFilename(char *line, char *url, char *filename)
          return(FALSE);
       chp++;
    }
-
+   
    /* Skip over the = and eat until we have the " or '                  */
    chp++;
    while((*chp != '"') && (*chp != '\''))
@@ -365,7 +437,7 @@ BOOL GetURLandFilename(char *line, char *url, char *filename)
          return(FALSE);
       chp++;
    }
-
+   
    /* Skip the ' or " and copy into URL until we reach a ' or "         */
    chp++; 
    while((*chp != '"') && (*chp != '\''))
@@ -385,7 +457,7 @@ BOOL GetURLandFilename(char *line, char *url, char *filename)
          return(FALSE);
       chp++;
    }
-
+   
    /* Skip the > and copy into filename until we reach a <              */
    chp++; 
    while(*chp != '<')
@@ -396,7 +468,7 @@ BOOL GetURLandFilename(char *line, char *url, char *filename)
       chp++;
    }
    filename[nFilename] = '\0';
-
+   
    return(TRUE);
 }
 
@@ -430,7 +502,7 @@ BOOL ReadPasswd(char *passwdFile, char *passwd)
 char *Execute(char *exe)
 {
    char *data = NULL;
-
+   
 #ifdef TEST_PROCESSPAGE
    printf("%s\n", exe);
 #else
@@ -438,7 +510,7 @@ char *Execute(char *exe)
    char ch;
    int  nData    = 0,
         dataSize = 0;
-
+   
    if((fp = (FILE *)popen(exe,"r"))!=NULL)
    {
       while(1)
@@ -466,91 +538,101 @@ char *Execute(char *exe)
 
 
 /************************************************************************/
-char *ProcessPage(char *reqID, char *page, char *cFile, char *passwd,
-                  BOOL verbose)
+char *ProcessPage(char *reqID, char *page, char *certFile, char *passwd,
+                  BOOL verbose, BOOL *ok)
 {
-   STRINGLIST *lines    = NULL,
-      *theLine;
-    char url[MAXSTRING];
-    char exe[MAXSTRING];
-    BOOL inData = FALSE;
-
-    page = Substitute(page, "\r", "", TRUE);
-    lines = SplitLine('\n', page);
-    
-    for(theLine=lines; theLine!=NULL; NEXT(theLine))
-    {
-        char *line;
-        if((line = mystrdup(theLine->string))==NULL)
-        {
-           FREE(page);
-           return(NULL);
-        }
-
+   STRINGLIST *lines = NULL,
+              *theLine;
+   char url[MAXSTRING];
+   char exe[MAXSTRING];
+   BOOL inData = FALSE;
+   
+   *ok = FALSE;
+   
+   page = Substitute(page, "\r", "", TRUE);
+   lines = SplitLine('\n', page);
+   
+   for(theLine=lines; theLine!=NULL; NEXT(theLine))
+   {
+      char *line;
+      if((line = mystrdup(theLine->string))==NULL)
+      {
+         FREE(page);
+         return(NULL);
+      }
+      
 #ifdef DEBUG
-        fprintf(stderr,"%s\n", line);
+      fprintf(stderr,"%s\n", line);
 #endif
-
-        if(inData)
-        {
-           char *urlPart  = NULL,
-                *filename = NULL;
-           
-           urlPart  = (char *)malloc(MAXSTRING * sizeof(char));
-           filename = (char *)malloc(MAXSTRING * sizeof(char));
-
-           /* $line =~ m/href=\"(.*?)\"\>(.*?)\</;                      */
-           GetURLandFilename(line, urlPart, filename);  
-           filename = Substitute(filename, " ", "_", TRUE);
-           urlPart  = Substitute(urlPart, "./", "", FALSE);
-           urlPart  = Substitute(urlPart, "(", "\\(", TRUE);
-           urlPart  = Substitute(urlPart, ")", "\\)", TRUE);
-           filename = Substitute(filename, "(", "\\(", TRUE);
-           filename = Substitute(filename, ")", "\\)", TRUE);
-
-           sprintf(url, "%s/%s", gBaseURL, urlPart);
-           sprintf(exe,
-                   "curl -s --cert-type p12 --cert %s:%s --output %s %s",
-                   cFile, passwd, filename, url);
-           FREE(urlPart);
-           FREE(filename);
-
-           if(verbose) fprintf(stdout, "%s\n", exe);
-           Execute(exe);
-
-           inData = FALSE;
-        }
-        else if(StringContains(line, "Annex"))
-        {
-           inData = TRUE;            
-        }
-        else if(StringContains(line, ">Word Document"))
-        {
-           char *urlPart = NULL,
+      
+      if(inData)
+      {
+         char *urlPart  = NULL,
               *filename = NULL;
-
-           urlPart  = (char *)malloc(2 * MAXSTRING * sizeof(char));
-           filename = (char *)malloc(2 * MAXSTRING * sizeof(char));
-
-           /* $line =~ m/href=\"(.*?)\"\>(.*?)\</;                      */
-           GetURLandFilename(line, urlPart, filename);  
-           sprintf(filename, "%s_1_6b_Admin_Report.doc", reqID);
-           urlPart  = Substitute(urlPart, "./", "", FALSE);
-           urlPart  = Substitute(urlPart, "&", "\\&", TRUE);
-
-           sprintf(url, "%s/%s", gBaseURL, urlPart);
-           sprintf(exe,
-                   "curl -s --cert-type p12 --cert %s:%s --output %s %s",
-                   cFile, passwd, filename, url);
-           FREE(urlPart);
-           FREE(filename);
-
-           if(verbose) fprintf(stdout, "%s\n", exe);
-           Execute(exe);
-        }
-        free(line);
-    }
-    return(page);
+         
+         urlPart  = (char *)malloc(MAXSTRING * sizeof(char));
+         filename = (char *)malloc(MAXSTRING * sizeof(char));
+         
+         /* $line =~ m/href=\"(.*?)\"\>(.*?)\</;                      */
+         GetURLandFilename(line, urlPart, filename);  
+         filename = Substitute(filename, " ", "_", TRUE);
+         urlPart  = Substitute(urlPart, "./", "", FALSE);
+         urlPart  = Substitute(urlPart, "(", "\\(", TRUE);
+         urlPart  = Substitute(urlPart, ")", "\\)", TRUE);
+         filename = Substitute(filename, "(", "\\(", TRUE);
+         filename = Substitute(filename, ")", "\\)", TRUE);
+         
+         if(verbose)
+            printf("   Getting file: %s\n", filename);
+         
+         *ok = TRUE;
+         
+         sprintf(url, "%s/%s", gBaseURL, urlPart);
+         sprintf(exe,
+                 "curl -s --cert-type p12 --cert %s:%s --output %s %s",
+                 certFile, passwd, filename, url);
+         FREE(urlPart);
+         FREE(filename);
+         
+         Execute(exe);
+         
+         inData = FALSE;
+      }
+      else if(StringContains(line, "Annex"))
+      {
+         inData = TRUE;            
+      }
+      else if(StringContains(line, ">Word Document"))
+      {
+         char *urlPart  = NULL,
+              *filename = NULL;
+         
+         urlPart  = (char *)malloc(2 * MAXSTRING * sizeof(char));
+         filename = (char *)malloc(2 * MAXSTRING * sizeof(char));
+         
+         /* $line =~ m/href=\"(.*?)\"\>(.*?)\</;                        */
+         GetURLandFilename(line, urlPart, filename);  
+         sprintf(filename, "%s_1_6b_Admin_Report.doc", reqID);
+         urlPart  = Substitute(urlPart, "./", "", FALSE);
+         urlPart  = Substitute(urlPart, "&", "\\&", TRUE);
+         
+         if(verbose)
+            printf("   Getting file: %s\n", filename);
+         
+         *ok = TRUE;
+         
+         sprintf(url, "%s/%s", gBaseURL, urlPart);
+         sprintf(exe,
+                 "curl -s --cert-type p12 --cert %s:%s --output %s %s",
+                 certFile, passwd, filename, url);
+         FREE(urlPart);
+         FREE(filename);
+         
+         Execute(exe);
+      }
+      free(line);
+   }
+   return(page);
 }
 
 
@@ -559,7 +641,7 @@ char *Substitute(char *string, char *old, char *new, BOOL global)
 {
    ULONG offset = 0;
    char *newString = NULL;
-
+   
    newString = doSubstitute(string, old, new, global, &offset);
    return(newString);
 }
@@ -570,11 +652,11 @@ static char *doSubstitute(char *string, char *old, char *new, BOOL global,
                           ULONG *offsetNum)
 {   
    char *newString = NULL,
-      *offset = NULL,
-      *chp,
-      *chpNew;
+        *offset    = NULL,
+        *chp,
+        *chpNew;
    ULONG newLen,
-      nChar;
+         nChar;
    
    /* Old string was not found                                          */
    if((offset = strstr(string+(*offsetNum), old))==NULL)
@@ -590,7 +672,7 @@ static char *doSubstitute(char *string, char *old, char *new, BOOL global,
       return(NULL);
    
    nChar = 0;
-
+   
    /* First part                                                        */
    for(chp=string; chp!=offset; chp++)
       newString[nChar++] = *chp;
