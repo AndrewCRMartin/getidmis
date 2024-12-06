@@ -86,6 +86,9 @@ char *ProcessPage(char *reqID, char *page, char *cFile, char *passwd,
 char *Substitute(char *string, char *old, char *new, BOOL global);
 static char *doSubstitute(char *string, char *old, char *new,
                           BOOL global, ULONG *offsetNum);
+void Usage(void);
+BOOL ParseCmdLine(int *pArgc, char ***pArgv, char *pwfile, char *passwd, 
+                  char *certFile);
 
 
 /************************************************************************/
@@ -131,23 +134,134 @@ int main(int argc, char **argv)
 
     ReadPasswd(passwdFile, passwd);
 
-    argc--; argv++;
-    while(argc)
+    if(ParseCmdLine(&argc, &argv, passwdFile, passwd, cFile))
     {
-        char *page;
-        sprintf(url, tplURL, *argv);
-        sprintf(exe,
-                "curl -s --cert-type p12 --cert %s:%s %s",
-                cFile, passwd, url);
-        page = Execute(exe);
-        page = ProcessPage(*argv, page, cFile, passwd, verbose);
-        FREE(page);
-        argc--; argv++;
+       while(argc)
+       {
+          char *page;
+          sprintf(url, tplURL, *argv);
+          sprintf(exe,
+                  "curl -s --cert-type p12 --cert %s:%s %s",
+                  cFile, passwd, url);
+          page = Execute(exe);
+          page = ProcessPage(*argv, page, cFile, passwd, verbose);
+          FREE(page);
+          argc--; argv++;
+       }
+    }
+    else
+    {
+       Usage();
+       return(1);
     }
     return(0);
 }
 #endif /* TEST                                                          */
 
+
+/************************************************************************/
+/*>BOOL ParseCmdLine(int *pArgc, char ***pArgv, char *pwFile, char *passwd, 
+                  char *certFile)
+   ---------------------------------------------------------------------
+*//**
+   \param[in]      argc         Argument count
+   \param[in]      **argv       Argument array
+   \param[out]     *infile      Input file (or blank string)
+   \param[out]     *outfile     Output file (or blank string)
+   \param[out]     *showDNA     Display the original DNA sequence
+   \param[out]     *showRF      Display the reading frame DNA
+   \param[out]     *showAll     Show all translations
+   \return                      Success?
+
+   Parse the command line
+   
+-  03.11.17 Original    By: ACRM
+-  02.12.22 Added -a / showAll
+*/
+BOOL ParseCmdLine(int *pArgc, char ***pArgv, char *pwFile, char *passwd, 
+                  char *certFile)
+{
+   (*pArgc)--;
+   (*pArgv)++;
+
+   while(*pArgc)
+   {
+      if((*pArgv)[0][0] == '-')
+      {
+         switch((*pArgv)[0][1])
+         {
+         case 'p':
+            (*pArgc)--;
+            (*pArgv)++;
+            strcpy(passwd, (*pArgv)[0]);
+            break;
+         case 'f':
+            (*pArgc)--;
+            (*pArgv)++;
+            strcpy(pwFile, (*pArgv)[0]);
+            break;
+         case 'c':
+            (*pArgc)--;
+            (*pArgv)++;
+            strcpy(certFile, (*pArgv)[0]);
+            break;
+         case 'h':
+            Usage();
+            return(TRUE);
+         default:
+            return(FALSE);
+            break;
+         }
+      }
+      else
+      {
+         /* Check that there are arguments left                    */
+         if(*pArgc < 1)
+            return(FALSE);
+         
+         return(TRUE);
+      }
+      (*pArgc)--;
+      (*pArgv)++;
+   }
+
+   return(TRUE);
+}
+
+
+/************************************************************************/
+void Usage(void)
+{
+   printf("\ngetidmis [-c cert.p12] [-f passwordfile] [-p password] \
+reqnum [reqnum ...]\n");
+   printf("         -c Specify the certificate file\n");
+   printf("         -f Specify a file containing the password\n");
+   printf("         -p Specify the password\n");
+
+   printf("\n`getidmis` will expect the certificate file to be called \
+`cert.p12`\n");
+   printf("and present in the current directory; this can be overridden \
+using\n");
+   printf("`-c` flag or the `IDMISCERTFILE` environment variable.\n");
+
+   printf("\nIt will expect the password to be contained in a file \
+called\n");
+   printf("`certpw.txt` present in the current directory; this can be \
+overridden\n");
+   printf("using the `-f` flag or the `IDMISPWDFILE` environment \
+variable.\n");
+   printf("Alternatively, it can be overridden using the `-p` flag to \
+specify the\n");
+   printf("password itself on the command line or the `IDMISPASSWD` \
+environment\n");
+   printf("variable. Values specified on the command line take \
+precedence over\n");
+   printf("values in environment variables.\n");
+
+   printf("\nIf both the password file and the actual password are \
+specified, the\n");
+   printf("actual password takes precedence.\n\n");
+}
 
 /************************************************************************/
 char *mystrdup(char *in)
