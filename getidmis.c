@@ -90,7 +90,7 @@ void Usage(void);
 BOOL ParseCmdLine(int *pArgc, char ***pArgv, char *pwfile, char *passwd, 
                   char *certFile, BOOL *verbose);
 void SetFromEnvVars(char *passwdFile, char *passwd, char *certFile);
-void ShowErrors(char *page, BOOL ok, BOOL verbose, char *entry);
+BOOL ShowErrors(char *page, BOOL ok, BOOL verbose, char *entry);
 
 
 /************************************************************************/
@@ -142,7 +142,13 @@ int main(int argc, char **argv)
    if(ParseCmdLine(&argc, &argv, passwdFile, passwd, certFile, &verbose))
    {
       if(passwd[0] == '\0')
-         ReadPasswd(passwdFile, passwd);
+      {
+         if(!ReadPasswd(passwdFile, passwd))
+         {
+            printf("\nError reading password file: %s\n\n", passwdFile);
+            return(1);
+         }
+      }
       
 #ifdef DEBUG
       printf("passwdFile: %s\n", passwdFile);
@@ -154,7 +160,8 @@ int main(int argc, char **argv)
       while(argc)
       {
          char *page;
-         BOOL ok = FALSE;
+         BOOL ok    = FALSE,
+              fatal = FALSE;
          
          if(verbose)
             printf("Processing: %s\n", *argv);
@@ -165,9 +172,13 @@ int main(int argc, char **argv)
                  certFile, passwd, url);
          page = Execute(exe);
          page = ProcessPage(*argv, page, certFile, passwd, verbose, &ok);
-         ShowErrors(page, ok, verbose, *argv);
+         if(ShowErrors(page, ok, verbose, *argv))
+            fatal = TRUE;
          
          FREE(page);
+
+         if(fatal)
+            return(1);
          argc--; argv++;
       }
    }
@@ -182,28 +193,24 @@ int main(int argc, char **argv)
 
 
 /************************************************************************/
-void ShowErrors(char *page, BOOL ok, BOOL verbose, char *entry)
+BOOL ShowErrors(char *page, BOOL ok, BOOL verbose, char *entry)
 {
    if(!ok)
    {
+      if((page == NULL) || (page[0] == '\0'))
+      {
+         printf("\nThe connection failed (certificate file or \
+password invalid?)\n\n");
+         return(TRUE);
+      }
+      
       printf("Failed to download any data for %s\n", entry);
       if(verbose)
-      {
-         if((page == NULL) || (page[0] == '\0'))
-         {
-            printf("   The connection failed (certificate file or \
-password invalid?)\n");
-         }
-         else
-         {
-            printf("\n\n%s", page);
-         }            
-      }
+         printf("\n\n%s", page);
       else
-      {
          printf("   Run with -v for more information\n");
-      }
    }
+   return(FALSE);
 }
 
 /************************************************************************/
