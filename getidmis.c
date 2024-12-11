@@ -131,7 +131,7 @@ int main(int argc, char **argv)
    passwd[0] = '\0';
    
    sprintf(tplURL,
-           "%s/Report.php?Request=%%s&Report=INN_Phase_6b_Admin_Report",
+           "%s/Report.php?Request=%%s\\&Report=INN_Phase_6b_Admin_Report",
            gBaseURL);
 
    strcpy(certFile,   "cert.p12");
@@ -170,6 +170,8 @@ int main(int argc, char **argv)
          sprintf(exe,
                  "curl -s --cert-type p12 --cert %s:%s %s",
                  certFile, passwd, url);
+         if(verbose)
+            printf("Running: %s\n", exe);
          page = Execute(exe);
          page = ProcessPage(*argv, page, certFile, passwd, verbose, &ok);
          if(ShowErrors(page, ok, verbose, *argv))
