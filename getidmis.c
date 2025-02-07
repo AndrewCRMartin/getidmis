@@ -57,10 +57,13 @@
 /************************************************************************/
 /* Defines and macros
 */
-#if !defined(__APPLE__) && !defined(MS_WINDOWS) && !defined(__USE_POSIX2)
+#if !defined(__APPLE__)    && !defined(MS_WINDOWS) && \
+    !defined(__USE_POSIX2) && !defined(GOT_PIPES)
 extern FILE *popen(const char *, const char *);
 #endif
-#if !defined(__APPLE__) && !defined(__USE_POSIX2)
+
+#if !defined(__APPLE__) && !defined(__USE_POSIX2) && \
+    !defined(GOT_PIPES)
 extern int pclose(FILE *);
 #endif
 
@@ -384,8 +387,8 @@ STRINGLIST *SplitLine(char splitChar, char *page)
 #ifdef DEBUG
       printf("%c", pageCopy[posInPage]);
       printf("%ld,", posInPage);
-#endif
       fflush(stdout);
+#endif
       if(pageCopy[posInPage] == splitChar)
       {
          pageCopy[posInPage] = '\0';
