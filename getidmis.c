@@ -135,8 +135,15 @@ int main(int argc, char **argv)
    passwd[0] = '\0';
 
 #if defined(MS_WINDOWS) || defined(_WIN32)
+/*
    sprintf(tplURL,
            "'%s/Report.php?Request=%%s%%%%26Report=INN_Phase_6b_Admin_Report'",
+           gBaseURL);
+
+   curl --cert-type p12 --cert xxxx.p12:passwd --data-urlencode --get url
+*/
+   sprintf(tplURL,
+           "--data-urlencode Request=%%s --get %s/Report.php?Report=INN_Phase_6b_Admin_Report",
            gBaseURL);
 #else
    sprintf(tplURL,
