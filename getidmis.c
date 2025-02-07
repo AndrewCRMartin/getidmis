@@ -94,6 +94,7 @@ BOOL ParseCmdLine(int *pArgc, char ***pArgv, char *pwfile, char *passwd,
                   char *certFile, BOOL *verbose);
 void SetFromEnvVars(char *passwdFile, char *passwd, char *certFile);
 BOOL ShowErrors(char *page, BOOL ok, BOOL verbose, char *entry);
+BOOL EmptyPage(char *page);
 
 
 /************************************************************************/
@@ -132,10 +133,16 @@ int main(int argc, char **argv)
 
    /* Blank the password                                               */
    passwd[0] = '\0';
-   
+
+#if defined(MS_WINDOWS) || defined(_WIN32)
    sprintf(tplURL,
-           "%s/Report.php?Request=%%s\\&Report=INN_Phase_6b_Admin_Report",
+           "'%s/Report.php?Request=%%s%%%%26Report=INN_Phase_6b_Admin_Report'",
            gBaseURL);
+#else
+   sprintf(tplURL,
+           "'%s/Report.php?Request=%%s&Report=INN_Phase_6b_Admin_Report'",
+           gBaseURL);
+#endif   
 
    strcpy(certFile,   "cert.p12");
    strcpy(passwdFile, "certpw.txt");
@@ -176,9 +183,22 @@ int main(int argc, char **argv)
          if(verbose)
             printf("Running: %s\n", exe);
          page = Execute(exe);
-         page = ProcessPage(*argv, page, certFile, passwd, verbose, &ok);
-         if(ShowErrors(page, ok, verbose, *argv))
-            fatal = TRUE;
+         if(EmptyPage(page))
+         {
+            char *errorPage;
+            sprintf(exe,
+                    "curl -S --cert-type p12 --cert %s:%s %s",
+                    certFile, passwd, url);
+            errorPage = Execute(exe);
+            fprintf(stderr, "%s", errorPage);
+            FREE(errorPage);
+         }
+         else
+         {
+            page = ProcessPage(*argv, page, certFile, passwd, verbose, &ok);
+            if(ShowErrors(page, ok, verbose, *argv))
+               fatal = TRUE;
+         }
          
          FREE(page);
 
@@ -196,6 +216,14 @@ int main(int argc, char **argv)
 }
 #endif /* TEST                                                          */
 
+
+BOOL EmptyPage(char *page)
+{
+   if(strlen(page)<1)
+      return(TRUE);
+   
+   return(FALSE);
+}
 
 /************************************************************************/
 BOOL ShowErrors(char *page, BOOL ok, BOOL verbose, char *entry)
@@ -594,12 +622,12 @@ char *ProcessPage(char *reqID, char *page, char *certFile, char *passwd,
          filename = Substitute(filename, "(", "\\(", TRUE);
          filename = Substitute(filename, ")", "\\)", TRUE);
          
-         if(verbose)
-            printf("   Getting file: %s\n", filename);
-         
          *ok = TRUE;
          
          sprintf(url, "%s/%s", gBaseURL, urlPart);
+         if(verbose)
+            printf("   Getting file: %s [%s]\n", filename, url);
+         
          sprintf(exe,
                  "curl -s --cert-type p12 --cert %s:%s --output %s %s",
                  certFile, passwd, filename, url);
