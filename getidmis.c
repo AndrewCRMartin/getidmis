@@ -4,11 +4,11 @@
    Program:    getidmis
    \file       getidmis.c
    
-   \version    V1.0
-   \date       05.12.24   
+   \version    V1.1
+   \date       09.02.25
    \brief      Grab a set of files from IDMIS
    
-   \copyright  Prof. Andrew C. R. Martin 2024
+   \copyright  Prof. Andrew C. R. Martin 2024-25
    \author     Prof. Andrew C. R. Martin
    \par
                abYinformatics, Ltd.
@@ -42,7 +42,9 @@
 
    Revision History:
    =================
-
+   V1.0 05.12.24  First version in C
+   V1.1 09.02.25  Ported to Windows
+   
 *************************************************************************/
 /* Includes
 */
@@ -135,13 +137,6 @@ int main(int argc, char **argv)
    passwd[0] = '\0';
 
 #if defined(MS_WINDOWS) || defined(_WIN32)
-/*
-   sprintf(tplURL,
-           "'%s/Report.php?Request=%%s%%%%26Report=INN_Phase_6b_Admin_Report'",
-           gBaseURL);
-
-   curl --cert-type p12 --cert xxxx.p12:passwd --data-urlencode --get url
-*/
    sprintf(tplURL,
            "--data-urlencode Request=%%s --get %s/Report.php?Report=INN_Phase_6b_Admin_Report",
            gBaseURL);
