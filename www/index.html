@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>INN Antibody annotation</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css"> 
+
+    <style type='text/css'>
+      /* For Firefox */
+      input[type='number'] {
+      -moz-appearance:textfield;
+      }
+      /* Webkit browsers like Safari and Chrome */
+      input[type=number]::-webkit-inner-spin-button,
+      input[type=number]::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+      }
+      input[type=number]{
+          width: 80px;
+      } 
+
+    </style>
+  </head>
+
+  <body onload='ResetForm();'>
+    <div class="w3-container w3-teal">
+      <h1>Getidmis, the INN IDMIS Downloader</h1>
+    </div>
+    
+    <div class="w3-container">
+
+      <div class='w3-panel w3-card w3-round'>
+        <p>
+          The IDMIS Downloader (<samp>getidmis</samp>) is currently
+          available for Linux and for Windows. A Mac version will be
+          forthcoming!
+        </p>
+        
+        <p>
+          The program is written in C and the code can be obtained from
+          <a href='https://github.com/AndrewCRMartin/getidmis'>GitHub</a>.
+          <samp>getidmis</samp> is essentially a command line program,
+          so if you are happy using the command line then just get the
+          version from GitHub, build, install and run!<br />
+          However, for Windows users, I have made a simple installer and
+          a clickable way of running the program.
+        </p>
+      </div>
+        
+      <h2>Windows installation</h2>
+
+      <div class='w3-panel w3-card w3-round'>
+        <ol>
+          <li>
+            Ensure you have <samp>PowerShell</samp> installed. If not,
+            just go to the Microsoft Store, type
+            <samp>PowerShell</samp> in the search box and install it.
+          </li>
+          <li>
+            Right click on<br />
+            <a href='install.bat'>the installer</a><br />
+            and select the option to download it - I am assuming you
+            will download it to your <samp>Downloads</samp> folder.
+          </li>
+          <li>
+            With Chrome or Edge browsers, the download may get 'stuck'
+            as a <samp>xxxxxxxxx.crdownload</samp> file. If this is the
+            case, go to your <samp>Downloads<samp> folder and rename
+                the file to <samp>install.bat</samp>
+          </li>
+          <li>
+            Double-click on <samp>install.bat</samp> in your <samp>Downloads</samp>
+            folder. The script will create a <samp>getidmis</samp> folder in your
+            <samp>Documents</samp> folder. It will then download the actual
+            <samp>getidmis</samp> software and a newer version of a program called
+            <samp>curl</samp> which allows files to be grabbed from the
+            internet. This program is installed on all newer Windows
+            versions, but it is an older version that doesn't support
+            the certificates properly.
+          </li>
+          <li>
+            <samp>install.bat</samp> will prompt you for your certificate password
+            (as supplied by Antonio).
+          </li>
+          <li>
+            <samp>install.bat</samp> will also prompt you to install the
+            certificate file (as supplied by Antonio) in the <samp>getidmis</samp>
+            folder. Drag this file from wherever you downloaded it into
+            the <samp>Downloads\getidmis</samp> folder and rename it to <samp>cert.p12</samp>.
+          </li>
+          <li>
+            Finally <samp>install.bat</samp> will tell you to press return to
+            indicate you have finished.
+          </li>
+        </ol>
+      </div>
+
+      <h2>Running getidmis on Windows</h2>
+        
+      <div class='w3-panel w3-card w3-round'>
+        <ol>
+          <li>
+            In the <samp>Documents\getidmis</samp> folder, there is a file called
+            <samp>getidmis.bat</samp>. Copy this file to wherever you want to
+            download the files from IDMIS.<br />
+            For example, if you are downloading the files for PL132, you
+            might have created a folder called <samp>Documents\PL132</samp>, so
+            copy <samp>getidmis.bat</samp> to that folder.
+          </li>
+          <li>
+            Double click on the copy of <samp>getidmis.bat</samp> that you just
+            made. Files will be downloaded from IDMIS to that folder.
+          </li>
+          <li>
+            You then enter the request numbers for the document you wish
+            to download. You can enter one number per line, or multiple
+            numbers on a single line separated by spaces -
+            do <strong>not</strong> use any other characters such as
+            commas or semi-colons!
+          </li>
+          <li>
+            When you are done entering numbers, simply press <samp>Enter</samp>
+            another time to enter a blank line.
+          </li>
+          <li>
+            All the files associated with each request number will then
+            be downloaded! 
+          </li>
+        </ol>
+      </div>
+    </div>
+  </body>
+</html>
