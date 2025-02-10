@@ -166,7 +166,7 @@ int main(int argc, char **argv)
          }
       }
       
-#ifndef DEBUG
+#ifdef DEBUG
       printf("passwdFile: %s\n", passwdFile);
       printf("passwd:     %s\n", passwd);
       printf("certFile:   %s\n", certFile);
@@ -181,7 +181,10 @@ int main(int argc, char **argv)
               fatal = FALSE;
          
          if(verbose)
+         {
             printf("Processing: %s\n", *argv);
+            fflush(stdout);
+         }
          
          sprintf(url, tplURL, *argv);
          sprintf(exe,
@@ -350,11 +353,14 @@ BOOL ParseCmdLine(int *pArgc, char ***pArgv, char *pwFile, char *passwd,
 /************************************************************************/
 void Usage(void)
 {
+   printf("\ngetidmis V1.2 (c) Prof. Andrew C.R. Martin, \
+abYinformatics\n");
    printf("\ngetidmis [-c cert.p12] [-f passwordfile] [-p password] \
-reqnum [reqnum ...]\n");
+[-x curlPath] reqnum [reqnum ...]\n");
    printf("         -c Specify the certificate file\n");
    printf("         -f Specify a file containing the password\n");
    printf("         -p Specify the password\n");
+   printf("         -x Specify the full path to curl\n");
    
    printf("\n`getidmis` will expect the certificate file to be called \
 `cert.p12`\n");
@@ -547,17 +553,14 @@ BOOL ReadPasswd(char *passwdFile, char *passwd)
    TERMINATE(result);
    strcpy(passwd, result);
    FREE(result);
-   printf("** Password read: %s\n", passwd);
    return(TRUE);
 #else   
    FILE *fp;
    if((fp=fopen(passwdFile, "r"))!=NULL)
    {
       fscanf(fp, "%s", passwd);
-      printf("** Initial password read: %s\n", passwd);
       TERMAT(passwd,'\r');
       TERMINATE(passwd);
-      printf("** Terminated password read: %s\n", passwd);
       fclose(fp);
       return(TRUE);
    }

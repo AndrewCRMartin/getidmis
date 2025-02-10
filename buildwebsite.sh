@@ -1,16 +1,18 @@
 #!/usr/bin/bash
-DEST=getidmis_binary
+DEST=/home/httpd/html/getidmis
 
 make
 (cd windows; make -f Makefile.windows64)
 mkdir -p $DEST
 mv getidmis $DEST/getidmis.linux
-mv windows/getidmis.exe $DEST
+mv windows/gi.exe $DEST
 make clean
 (cd windows; make -f Makefile.windows64 clean)
 cp windows/curl/curl.exe $DEST
+cp windows/install.bat   $DEST
+cp windows/getidmis.bat  $DEST
 
-(cd $DEST; zip -r ../getidmis.zip)
-rm -rf $DEST
+# (cd $DEST; zip -r ../getidmis.zip)
+# rm -rf $DEST
 
 
