@@ -4,8 +4,8 @@
    Program:    getidmis
    \file       getidmis.c
    
-   \version    V1.1
-   \date       09.02.25
+   \version    V1.2
+   \date       10.02.25
    \brief      Grab a set of files from IDMIS
    
    \copyright  Prof. Andrew C. R. Martin 2024-25
@@ -44,6 +44,7 @@
    =================
    V1.0 05.12.24  First version in C
    V1.1 09.02.25  Ported to Windows
+   V1.2 10.02.25  Added -x flag to specify where the curl executable is
    
 *************************************************************************/
 /* Includes
@@ -87,13 +88,13 @@ BOOL StringContains(char *string, char *contains);
 BOOL ReadPasswd(char *passwdFile, char *passwd);
 char *Execute(char *exe);
 char *ProcessPage(char *reqID, char *page, char *cFile, char *passwd,
-                  BOOL verbose, BOOL *ok);
+                  char *curlPath, BOOL verbose, BOOL *ok);
 char *Substitute(char *string, char *old, char *new, BOOL global);
 static char *doSubstitute(char *string, char *old, char *new,
                           BOOL global, ULONG *offsetNum);
 void Usage(void);
 BOOL ParseCmdLine(int *pArgc, char ***pArgv, char *pwfile, char *passwd, 
-                  char *certFile, BOOL *verbose);
+                  char *certFile, char *curlPath, BOOL *verbose);
 void SetFromEnvVars(char *passwdFile, char *passwd, char *certFile);
 BOOL ShowErrors(char *page, BOOL ok, BOOL verbose, char *entry);
 BOOL EmptyPage(char *page);
@@ -128,6 +129,7 @@ int main(int argc, char **argv)
    char tplURL[MAXSTRING],
         certFile[MAXSTRING],
         passwdFile[MAXSTRING],
+        curlPath[MAXSTRING],
         passwd[MAXSTRING],
         url[MAXSTRING],
         exe[MAXSTRING];
@@ -148,10 +150,12 @@ int main(int argc, char **argv)
 
    strcpy(certFile,   "cert.p12");
    strcpy(passwdFile, "certpw.txt");
+   strcpy(curlPath,   "curl");
    
    SetFromEnvVars(passwdFile, passwd, certFile);
    
-   if(ParseCmdLine(&argc, &argv, passwdFile, passwd, certFile, &verbose))
+   if(ParseCmdLine(&argc, &argv, passwdFile, passwd, certFile, curlPath,
+                   &verbose))
    {
       if(passwd[0] == '\0')
       {
@@ -162,10 +166,11 @@ int main(int argc, char **argv)
          }
       }
       
-#ifdef DEBUG
+#ifndef DEBUG
       printf("passwdFile: %s\n", passwdFile);
       printf("passwd:     %s\n", passwd);
       printf("certFile:   %s\n", certFile);
+      printf("curlPath:   %s\n", curlPath);
       printf("Args left:  %d\n", argc);
 #endif
       
@@ -180,8 +185,8 @@ int main(int argc, char **argv)
          
          sprintf(url, tplURL, *argv);
          sprintf(exe,
-                 "curl -s --cert-type p12 --cert %s:%s %s",
-                 certFile, passwd, url);
+                 "%s -s --cert-type p12 --cert %s:%s %s",
+                 curlPath, certFile, passwd, url);
          if(verbose)
             printf("Running: %s\n", exe);
          page = Execute(exe);
@@ -189,15 +194,16 @@ int main(int argc, char **argv)
          {
             char *errorPage;
             sprintf(exe,
-                    "curl -S --cert-type p12 --cert %s:%s %s",
-                    certFile, passwd, url);
+                    "%s -S --cert-type p12 --cert %s:%s %s",
+                    curlPath, certFile, passwd, url);
             errorPage = Execute(exe);
             fprintf(stderr, "%s", errorPage);
             FREE(errorPage);
          }
          else
          {
-            page = ProcessPage(*argv, page, certFile, passwd, verbose, &ok);
+            page = ProcessPage(*argv, page, certFile, passwd, curlPath,
+                               verbose, &ok);
             if(ShowErrors(page, ok, verbose, *argv))
                fatal = TRUE;
          }
@@ -263,25 +269,26 @@ void SetFromEnvVars(char *passwdFile, char *passwd, char *certFile)
 
 /************************************************************************/
 /*>BOOL ParseCmdLine(int *pArgc, char ***pArgv, char *pwFile,
-                     char *passwd, char *certFile)
-  ----------------------------------------------------------
+                     char *passwd, char *certFile, char *curlPath,
+                     BOOL *verbose)
+  ----------------------------------------------------------------
 *//**
-   \param[in]      argc         Argument count
-   \param[in]      **argv       Argument array
-   \param[out]     *infile      Input file (or blank string)
-   \param[out]     *outfile     Output file (or blank string)
-   \param[out]     *showDNA     Display the original DNA sequence
-   \param[out]     *showRF      Display the reading frame DNA
-   \param[out]     *showAll     Show all translations
+   \param[in]      *pArgc       Pointer to argument count
+   \param[in]      ***pArgv     Pointer to argument array
+   \param[out]     *pwfile      Password file
+   \param[out]     *passwd      Password
+   \param[out]     *certFile    Certificate file
+   \param[out]     *curlPath    Full path to curl executable
+   \param[out]     *verbose     Verbose
    \return                      Success?
 
    Parse the command line
    
--  03.11.17 Original    By: ACRM
--  02.12.22 Added -a / showAll
+-  05.12.24 Original    By: ACRM
+-  10.02.25 Added -x / curlPath
 */
 BOOL ParseCmdLine(int *pArgc, char ***pArgv, char *pwFile, char *passwd, 
-                  char *certFile, BOOL *verbose)
+                  char *certFile, char *curlPath, BOOL *verbose)
 {
    (*pArgc)--;
    (*pArgv)++;
@@ -306,6 +313,11 @@ BOOL ParseCmdLine(int *pArgc, char ***pArgv, char *pwFile, char *passwd,
             (*pArgc)--;
             (*pArgv)++;
             strcpy(certFile, (*pArgv)[0]);
+            break;
+         case 'x':
+            (*pArgc)--;
+            (*pArgv)++;
+            strcpy(curlPath, (*pArgv)[0]);
             break;
          case 'v':
             *verbose = TRUE;
@@ -527,14 +539,29 @@ BOOL StringContains(char *string, char *contains)
 /************************************************************************/
 BOOL ReadPasswd(char *passwdFile, char *passwd)
 {
+#if defined(MS_WINDOWS) || defined(_WIN32)
+   char *result = NULL;
+   char exe[MAXSTRING];
+   sprintf(exe, "TYPE %s", passwdFile);
+   result = Execute(exe);
+   TERMINATE(result);
+   strcpy(passwd, result);
+   FREE(result);
+   printf("** Password read: %s\n", passwd);
+   return(TRUE);
+#else   
    FILE *fp;
    if((fp=fopen(passwdFile, "r"))!=NULL)
    {
       fscanf(fp, "%s", passwd);
+      printf("** Initial password read: %s\n", passwd);
+      TERMAT(passwd,'\r');
       TERMINATE(passwd);
+      printf("** Terminated password read: %s\n", passwd);
       fclose(fp);
       return(TRUE);
    }
+#endif
    
    return(FALSE);
 }
@@ -581,7 +608,7 @@ char *Execute(char *exe)
 
 /************************************************************************/
 char *ProcessPage(char *reqID, char *page, char *certFile, char *passwd,
-                  BOOL verbose, BOOL *ok)
+                  char *curlPath, BOOL verbose, BOOL *ok)
 {
    STRINGLIST *lines = NULL,
               *theLine;
@@ -631,8 +658,8 @@ char *ProcessPage(char *reqID, char *page, char *certFile, char *passwd,
             printf("   Getting file: %s [%s]\n", filename, url);
          
          sprintf(exe,
-                 "curl -s --cert-type p12 --cert %s:%s --output %s %s",
-                 certFile, passwd, filename, url);
+                 "%s -s --cert-type p12 --cert %s:%s --output %s %s",
+                 curlPath, certFile, passwd, filename, url);
          FREE(urlPart);
          FREE(filename);
          
@@ -665,8 +692,8 @@ char *ProcessPage(char *reqID, char *page, char *certFile, char *passwd,
          
          sprintf(url, "%s/%s", gBaseURL, urlPart);
          sprintf(exe,
-                 "curl -s --cert-type p12 --cert %s:%s --output %s %s",
-                 certFile, passwd, filename, url);
+                 "%s -s --cert-type p12 --cert %s:%s --output %s %s",
+                 curlPath, certFile, passwd, filename, url);
          FREE(urlPart);
          FREE(filename);
          
