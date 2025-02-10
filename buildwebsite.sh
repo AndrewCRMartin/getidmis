@@ -11,6 +11,7 @@ make clean
 cp windows/curl/curl.exe $DEST
 cp windows/install.bat   $DEST
 cp windows/getidmis.bat  $DEST
+cp www/index.html        $DEST
 
 # (cd $DEST; zip -r ../getidmis.zip)
 # rm -rf $DEST
