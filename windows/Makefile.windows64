@@ -1,4 +1,4 @@
-EXE    = getidmis.exe
+EXE    = gi.exe
 OFILES = getidmis.o
 LIBS   = 
 CFLAGS = -g -ansi -pedantic -Wall -Wno-format-overflow -DGOT_PIPES
