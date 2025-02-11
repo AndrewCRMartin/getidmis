@@ -1,5 +1,7 @@
 #!/usr/bin/bash
-DEST=/home/httpd/html/getidmis
+
+#DEST=/home/httpd/html/getidmis
+DEST=/serv/www/html_bioinf/getidmis
 
 make
 (cd windows; make -f Makefile.windows64)

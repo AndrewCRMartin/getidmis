@@ -41,4 +41,4 @@ Write-Host "Running command: $cmd"
 Invoke-Expression $cmd
 Write-Host "Downloading complete!" -fo Red
 
-Read-Host "Press return when done"
+Read-Host "Press <Enter> when done"

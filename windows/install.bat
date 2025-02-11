@@ -5,21 +5,12 @@
   exit /b
 #>
 
-function Add-Path-User($newPath) {
-    $Path = $newPath + [IO.Path]::PathSeparator + [Environment]::GetEnvironmentVariable("PATH", "User") 
-    [Environment]::SetEnvironmentVariable( "Path", $Path, "User" )
-}
-
 $bin="$HOME\Documents\getidmis"
 
 Write-Host INSTALLING GETIDMIS -fo Green
 Write-Host
 Write-Host Creating a folder for getidmis: $bin -fo Green
 New-Item -ItemType Directory -Path $bin -Force
-Write-Host Adding this folder to your path -fo Green
-####### Add-Path-User($bin)
-####### $Path = [Environment]::GetEnvironmentVariable("PATH", "User") 
-####### Write-Host Your path is now $Path -fo Green
 
 $certPW = Read-Host "Enter your certificate password"
 echo $certPW > "$bin\certpw.txt"
@@ -40,9 +31,4 @@ curl -o $file $uri
 Write-Host "You must now copy your certificate file into $bin" -fo Red
 Write-Host "   and rename it cert.p12" -fo Red
 
-$certPW = Read-Host "Press <ENTER> when done"
-
-
-
-
-
+$certPW = Read-Host "Press <Enter> when done"
