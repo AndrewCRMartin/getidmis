@@ -22,14 +22,14 @@ echo -e "${green}Your certificate password is now stored in $bin/certpw.txt${nor
 
 echo -e Downloading the getidmis executables to $bin -fo Green
 cd $bin
-$file = "getidmis"
-$uri = "http://stagleys.co.uk/getidmis/mac/$file"
+file="getidmis"
+uri="http://stagleys.co.uk/getidmis/mac/$file"
 curl -o $file $uri
-#$file = "curl.exe"
-#$uri = "http://stagleys.co.uk/getidmis/$file"
+#file="curl.exe"
+#uri="http://stagleys.co.uk/getidmis/$file"
 #curl -o $file $uri
-$file = "getidmis.sh"
-$uri = "http://stagleys.co.uk/getidmis/mac/$file"
+file="getidmis.sh"
+uri="http://stagleys.co.uk/getidmis/mac/$file"
 curl -o $file $uri
 
 echo -e "${red}You must now copy your certificate file into $bin"
