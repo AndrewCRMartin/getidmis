@@ -30,15 +30,41 @@ uri="http://www.bioinf.org.uk/getidmis/mac/$file"
 curl -o $file $uri
 chmod a+x $file
 
-#file="curl"
-#uri="http://www.bioinf.org.uk/getidmis/mac/$file"
-#curl -o $file $uri
-#chmod a+x $file
+file="curl_arm"
+uri="http://www.bioinf.org.uk/getidmis/mac/curl/$file"
+curl -o $file $uri
+chmod a+x $file
+
+file="curl_x86"
+uri="http://www.bioinf.org.uk/getidmis/mac/curl/$file"
+curl -o $file $uri
+chmod a+x $file
 
 file="getidmis.sh"
 uri="http://www.bioinf.org.uk/getidmis/mac/$file"
 curl -o $file $uri
 chmod a+x $file
+
+echo -e "${green}Determining system curl version${gnorm}"
+curlV=`curl --version | head -1 | awk '{print $2}' | awk -F. '{print $1}'`
+
+if [ $curlV -ge 8 ]
+then
+    echo -e "${green}Using system system${gnorm}"
+    ln -s /usr/bin/curl curl
+else
+    echo "Your system version of curl is too old (V7 or below), so using a newer one!"
+    echo -e "${green}Determining system type${gnorm}"
+    arch=`uname -a | awk '{print $NF}'`
+    if [ $arch == "x86_64" ]
+    then
+        ln -s curl_x86 curl
+    else
+        ln -s curl_arm curl
+    fi
+fi
+    
+    
 
 echo ""
 echo ""

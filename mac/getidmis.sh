@@ -17,8 +17,7 @@ echo -e "${red}RUNNING GETIDMIS${rnorm}"
 echo -e ""
 
 exe="$bin/getidmis"
-#param="-c $bin/cert.p12 -f $bin/certpw.txt -x $bin/curl"
-param="-c $bin/cert.p12 -f $bin/certpw.txt"
+param="-c $bin/cert.p12 -f $bin/certpw.txt -x $bin/curl"
 
 echo -e "${green}Enter the INN request numbers you wish to download             ${gnorm}"
 echo -e "${green}   You may enter multiple numbers (space-separated) on one line${gnorm}"
