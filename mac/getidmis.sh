@@ -1,44 +1,54 @@
-<# :
-  @echo off
-    powershell /nologo /noprofile /command ^
-        "&{[ScriptBlock]::Create((cat """%~f0""") -join [Char[]]10).Invoke(@(&{$args}%*))}"
-  exit /b
-#>
+#!/bin/bash
 
-Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process
+bin="$HOME/getidmis"
 
-$bin="$HOME\Documents\getidmis"
+#green="\e[32m"
+#red="\e[31m"
+#gnorm="\e[0m"
+#rnorm="\e[0m"
 
-Write-Host RUNNING GETIDMIS -fo Green
-Write-Host
+green="* "
+red="*** "
+gnorm=" *"
+rnorm=" ***"
 
-$exe="$bin\gi"
-$param="-c $bin\cert.p12 -f $bin\certpw.txt -x $bin\curl.exe"
+echo -e ""
+echo -e "${red}RUNNING GETIDMIS${rnorm}"
+echo -e ""
 
-Write-Host "Enter the INN request numbers you wish to download" -fo Green
-Write-Host "   You may enter multiple numbers (space-separated) on one line" -fo Green
-Write-Host "   or one per line (or a combination!)" -fo Green
+exe="$bin/getidmis"
+#param="-c $bin/cert.p12 -f $bin/certpw.txt -x $bin/curl"
+param="-c $bin/cert.p12 -f $bin/certpw.txt"
 
-$requests = ''
+echo -e "${green}Enter the INN request numbers you wish to download             ${gnorm}"
+echo -e "${green}   You may enter multiple numbers (space-separated) on one line${gnorm}"
+echo -e "${green}   or one per line, or a combination!                          ${gnorm}"
+
+reqNum='x'
+while [ "X$reqNum" != "X" ]
 do
-{
-   $reqNum = Read-Host "Request numbers - or a blank line to finish"
-   if($reqNum -ne '')
-   {
-      if($requests -eq '')
-      {
-          $requests = $reqNum
-      }
+   echo -n "Request numbers - or a blank line to finish: "
+   read reqNum
+   echo "Value = $reqNum"
+   if [ "X$reqNum" != 'X' ]
+   then
+      if [ "X$requests" == 'X' ]
+      then
+          requests=$reqNum
       else
-      {
-          $requests = $requests + " $reqNum"
-      }
-   }
-}  while($reqNum -ne '')
+          requests="$requests $reqNum"
+      fi
+   fi
+done   
 
-$cmd = "& $exe $param $requests"
-Write-Host "Running command: $cmd"
-Invoke-Expression $cmd
-Write-Host "Downloading complete!" -fo Red
+cmd="$exe $param $requests"
+echo -e "Running command: $cmd"
+$cmd
 
-Read-Host "Press <Enter> when done"
+echo ""
+echo -e "${red}Downloading complete!${rnorm}"
+echo ""
+
+echo -n "Press <Enter> when done"
+read junk
+
