@@ -1,7 +1,7 @@
 #!/usr/bin/bash
 
 #DEST=/home/httpd/html/getidmis
-DEST=/serv/www/html_bioinf/getidmis2
+DEST=/serv/www/html_bioinf/getidmis
 
 mkdir -p $DEST
 mkdir -p $DEST/linux

@@ -28,15 +28,24 @@ cd $bin
 file="getidmis"
 uri="http://stagleys.co.uk/getidmis/mac/$file"
 curl -o $file $uri
-#file="curl.exe"
-#uri="http://stagleys.co.uk/getidmis/$file"
+chmod a+x $file
+
+#file="curl"
+#uri="http://stagleys.co.uk/getidmis/mac/$file"
 #curl -o $file $uri
+#chmod a+x $file
+
 file="getidmis.sh"
 uri="http://stagleys.co.uk/getidmis/mac/$file"
 curl -o $file $uri
+chmod a+x $file
 
+echo ""
+echo ""
 echo -e "${red}You must now copy your certificate file into $bin${rnorm}"
 echo -e "${red}   and rename it cert.p12                        ${rnorm}"
+echo ""
+echo ""
 
 echo -e -n "Press <Enter> when done"
 read junk
