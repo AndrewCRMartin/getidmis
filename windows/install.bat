@@ -19,13 +19,13 @@ Write-Host Your certificate password is now stored in $bin\certpw.txt -fo Green
 Write-Host Downloading the getidmis executables to $bin -fo Green
 cd $bin
 $file = "gi.exe"
-$uri = "http://stagleys.co.uk/getidmis/$file"
+$uri = "http://stagleys.co.uk/getidmis/windows/$file"
 curl -o $file $uri
 $file = "curl.exe"
-$uri = "http://stagleys.co.uk/getidmis/$file"
+$uri = "http://stagleys.co.uk/getidmis/windows/$file"
 curl -o $file $uri
 $file = "getidmis.bat"
-$uri = "http://stagleys.co.uk/getidmis/$file"
+$uri = "http://stagleys.co.uk/getidmis/windows/$file"
 curl -o $file $uri
 
 Write-Host "You must now copy your certificate file into $bin" -fo Red

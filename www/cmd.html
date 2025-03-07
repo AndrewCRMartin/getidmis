@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>INN Antibody annotation</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css"> 
+
+    <style type='text/css'>
+      /* For Firefox */
+      input[type='number'] {
+      -moz-appearance:textfield;
+      }
+      /* Webkit browsers like Safari and Chrome */
+      input[type=number]::-webkit-inner-spin-button,
+      input[type=number]::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+      }
+      input[type=number]{
+          width: 80px;
+      } 
+      .w3-button {padding: 1px 2px; border: solid 1px black; border-radius: 6px}
+      .am-folder {color: #AA5555; font-weight: bold;}
+      .am-exe {font-weight: bold;}
+      .am-button {color: #0000AA; font-weight: bold;}
+      .am-message {}
+    </style>
+  </head>
+
+  <body onload='ResetForm();'>
+    <div class="w3-container w3-teal">
+      <h1>Getidmis, the INN IDMIS Downloader</h1>
+    </div>
+    
+    <div class="w3-container">
+
+      <h2>Command line installation and usage</h2>
+
+      <div class='w3-panel w3-card w3-round'>
+        <p>
+          If you are happy using the command line, then you can
+          simply download the <samp class='am-exe'>getidmis</samp>
+          program and run it.
+        </p>
+
+        <p>
+          <a class='w3-button w3-teal' href='gi.exe'>&nbsp;Windows&nbsp;</a>
+          <a class='w3-button w3-teal' href='linux/getidmis'>&nbsp;Linux&nbsp;</a>
+          <a class='w3-button w3-teal' href='mac/'>&nbsp;Mac&nbsp;</a>
+        </p>
+
+        <p>
+          Note, depending on your browser, you may obtain an alert saying
+          something like <i class='am-message'>'Insecure download
+            blocked'</i>. Click
+          the <samp class='am-button'>keep</samp> option.
+        </p>
+        <p>
+          With Chrome or Edge browsers, the download may get 'stuck'
+          as a <samp class='am-exe'>Unconfirmed
+            xxxxx.crdownload</samp> file. If this is the case, click
+          the <samp class='am-button'>download progress</samp> button and click
+          the <samp class='am-button'>Keep</samp> button. Alternatively, go to the
+          folder where you have downloaded it and rename the file.
+        </p>
+
+        <p>
+          <strong>Note:</strong> The dire warnings about 'insecure
+          downloads' really can be safely ignored! They are <i>not</i>
+          suggesting any security issues with the file itself, they
+          are simply saying that it is downloaded over HTTP rather
+          than HTTPS (which encrypts the file as it is being downloaded).
+        </p>
+
+        <p>
+          As usual, you can put the executable program somewhere in
+          your path, or run it in the current directory.
+        </p>
+      </div>
+
+      <h3>Usage</h3>
+      <div class='w3-panel w3-card w3-round'>
+        <pre>
+getidmis [-c cert.p12] [-f passwordfile] [-p password] [-x curlPath] reqnum [reqnum ...]
+         -c Specify the certificate file
+         -f Specify a file containing the password
+         -p Specify the password
+         -x Specify the full path to curl
+        </pre>
+
+        <p>
+          To use <samp class='am-exe'>getidmis</samp>, you need to
+          provide the certificate file and the certificate
+          password. You have five options of how to do this:
+        </p>
+
+        <ol>
+          <li>
+            Specify the certificate file using the <samp class='am-exe'>-c</samp>
+            flag and the password using the <samp class='am-exe'>-p</samp> flag.
+          </li>
+          
+          <li>
+            Create a file containing the password, then specify the
+            certificate file using the <samp class='am-exe'>-c</samp> and the file
+            containing the password using the <samp class='am-exe'>-f</samp> flag.
+          </li>
+          
+          <li>
+            Ensure the certificate file is called
+            <samp class='am-exe'>cert.p12</samp>) and create a file
+            containing the password called
+            <samp class='am-exe'>certpw.txt</samp>). If these are in
+            your current directory, you do not need to specify them on
+            the command line.
+          </li>
+          
+          <li>
+            Set the environment variable <samp class='am-exe'>IDMISCERTFILE</samp> to
+            specify the path to your certificate file. Create a file
+            containing your certificate password and set the
+            environment variable <samp class='am-exe'>IDMISPWDFILE</samp> to specify
+            the path to your password file. Obviously this should be
+            done in your startup file (<samp class='am-exe'>.profile</samp>,
+            <samp class='am-exe'>.bashrc</samp>, <samp class='am-exe'>.tcshrc</samp>, etc.)
+          </li>
+
+          <li>
+            Set the environment variable <samp class='am-exe'>IDMISCERTFILE</samp> to
+            specify the path to your certificate file and set the
+            environment variable <samp class='am-exe'>IDMISPASSWD</samp> to specify
+            your password. Again, this should be done in your startup
+            file. 
+          </li>
+        </ol>
+
+        <p>
+          If both the password file and the actual password are specified, the
+          actual password takes precedence. i.e.:<br />
+          a provided password takes precedence over the password file<br />
+          --and--<br />
+          values on the command line take precedence over environment
+          variables, which take precedence over defaults.
+        </p>
+      </div> <!-- w3-panel w3-card w3-round -->
+    </div> <!-- w3-container -->
+   </body>
+</html>
+
+        
+        
+
+        
+
