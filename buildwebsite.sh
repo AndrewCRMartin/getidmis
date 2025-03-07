@@ -17,7 +17,11 @@ cp windows/install.bat   $DEST/windows
 cp windows/getidmis.bat  $DEST/windows
 cp mac/install.sh        $DEST/mac
 cp mac/getidmis.sh       $DEST/mac
-cp www/*.html            $DEST
+
+cp www/index.html        $DEST
+cp www/cmd.html          $DEST
+cp www/mac.html          $DEST/mac/index.html
+cp www/win.html          $DEST/windows/index.html
 
 # (cd $DEST; zip -r ../getidmis.zip)
 # rm -rf $DEST

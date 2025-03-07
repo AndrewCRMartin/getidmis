@@ -31,28 +31,34 @@
     <div class="w3-container w3-teal">
       <h1>Getidmis, the INN IDMIS Downloader</h1>
     </div>
-    
-    <div class="w3-container">
 
-      <h2>Windows Installation</h2>
+    <div class="w3-container">
+      <h2>Mac Installation</h2>
+    
 
       <h3>Before you start...</h3>
       <div class='w3-panel w3-card w3-round'>
-        <p>
-          Ensure you have <samp class='am-exe'>PowerShell</samp>
-          installed. If not, just go to the Microsoft Store, type
-          <samp class='am-exe'>PowerShell</samp> in the search box and
-          install it.
-        </p>
+        <samp class='am-exe'>getidmis</samp> makes use of a program
+        called <samp class='am-exe'>cURL</samp> to grab files from the
+        internet. It requires at least version&nbsp;8 of this software
+        to handle the password protected certificate files. To see
+        what version you have, open a command prompt and type
+        <samp>curl --version</samp> If you can upgrade to the latest
+        version before installing
+        <samp class='am-exe'>getidmis</samp>, things will definitely
+        go smoothly! If you can't, then the installer will try to work
+        out your hardware architecture and install a local copy of the
+        correct version. Since I don't have a recent Mac, I cannot
+        test this!
       </div>
-        
+    
       <div class='w3-panel w3-card w3-round'>
         <h3>Obtaining the getidmis installer...</h3>
         <ol>
           <li>
             Click on this link: <a class='w3-button w3-teal'
-                                   href='install.bat'
-                                   download='install.bat'>&nbsp;GetIDMIS 
+                                   href='install.sh'
+                                   download='install.sh'>&nbsp;GetIDMIS 
               Installer&nbsp;</a>
             to download it - I am assuming you will download it to
             your <samp class='am-folder'>Downloads</samp> folder.
@@ -67,10 +73,11 @@
             With Chrome or Edge browsers, the download may get 'stuck'
             as a <samp class='am-exe'>Unconfirmed
               xxxxx.crdownload</samp> file. If this is the case, click
-            the <samp class='am-button'>download progress</samp> button and click
-            the <samp class='am-button'>Keep</samp> button. Alternatively, go to the
+            the <samp class='am-button'>download progress</samp>
+            button and click the <samp class='am-button'>Keep</samp>
+            button. Alternatively, go to the
             <samp class='am-folder'>Downloads</samp> folder and rename
-            the file to <samp class='am-exe'>install.bat</samp>
+            the file to <samp class='am-exe'>install.sh</samp>
           </li>
         </ol>
 
@@ -86,15 +93,13 @@
         <h3>Running the getidmis installer...</h3>
         <ol>
           <li>
-            Double-click on <samp class='am-exe'>install.bat</samp> in
+            Double-click on <samp class='am-exe'>install.sh</samp> in
             your <samp class='am-folder'>Downloads</samp> folder.
           </li>
           <li>
-            Windows will probably respond with a blue alert box
-            saying <i class='am-message'>'Windows protected your
-              PC'</i>. Click the <samp class='am-button'>More
-              info</samp> link and then the <samp class='am-button'>Run
-              anyway</samp> button.
+            The Mac may respond with an alert box
+            warning about running untrusted software.
+            Click whatever you need to, to run it anyway!
           </li>
           <li>
             The installer will prompt you for your certificate
@@ -102,15 +107,16 @@
           </li>
           <li>
             It will create a <samp class='am-folder'>getidmis</samp>
-            folder in your <samp class='am-folder'>Documents</samp>
-            folder and save your certificate password there. It will
-            then download the actual
-            <samp class='am-exe'>getidmis</samp> software and a newer
-            version of a program called
-            <samp class='am-exe'>curl</samp> which allows files to be
-            grabbed from the internet. This program is installed on
-            all newer Windows versions, but it is an older version
-            that doesn't support the certificates properly.
+            folder in your home folder (below I refer to that new
+            folder as <samp class='am-folder'>Home...getidmis</samp>)
+            and save your certificate password there. It will then
+            download the actual
+            <samp class='am-exe'>getidmis</samp> software and the newer
+            versions of the <samp class='am-exe'>curl</samp> program.
+            As above, if you can make sure that
+            <samp class='am-exe'>curl V8.0</samp> (or higher) is
+            installed before you start, then
+            <samp class='am-exe'>getidmis</samp> will use that.
           </li>
           <li>
             The installer will also prompt you to install the
@@ -119,7 +125,7 @@
             file (typically called
             <samp class='am-exe'><i>surname</i>-cert.p12</samp>, from
             wherever you downloaded it, into the
-            <samp class='am-folder'>Downloads\getidmis</samp> folder
+            <samp class='am-folder'>Home...getidmis</samp> folder
             and rename it to <samp class='am-exe'>cert.p12</samp>.
           </li>
           <li>
@@ -130,26 +136,26 @@
         </ol>
       </div>
       
-      <h2>Running getidmis on Windows</h2>
+      <h2>Running getidmis on the Mac</h2>
       
       <div class='w3-panel w3-card w3-round'>
         <ol>
           <li>
-            In the <samp class='am-folder'>Documents\getidmis</samp>
+            In the <samp class='am-folder'>Home...getidmis</samp>
             folder, there is a file called
-            <samp class='am-exe'>getidmis.bat</samp>. Copy this file
+            <samp class='am-exe'>getidmis.sh</samp>. Copy this file
             to wherever you want to download the files from
             IDMIS.<br />
             
             For example, if you are downloading the files for PL132,
             you might have created a folder
-            called <samp class='am-folder'>Documents\PL132</samp>, so
-            copy <samp class='am-exe'>getidmis.bat</samp> to that
+            called <samp class='am-folder'>Documents/PL132</samp>, so
+            copy <samp class='am-exe'>getidmis.sh</samp> to that
             folder.
           </li>
           <li>
             Double click on the copy of
-            <samp class='am-exe'>getidmis.bat</samp> that you just
+            <samp class='am-exe'>getidmis.sh</samp> that you just
             made. Files will be downloaded from IDMIS to that folder.
           </li>
           <li>
@@ -169,14 +175,6 @@
             then be downloaded!
           </li>
         </ol>
-        <p>
-          If you are a Windows user who is happy with using the
-          command line, but not with compiling code, then, following
-          the installation instructions above, the actual
-          <samp class='am-exe'>getidmis</samp> can be found as
-          <samp class='am-folder'>Documents\getidmis\gi.exe</samp> You
-          can run the program from the command line to obtain help.
-        </p>
       </div>
       
     </div> <!-- w3-container -->
