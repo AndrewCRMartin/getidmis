@@ -26,24 +26,24 @@ echo -e "${green}Your certificate password is now stored in $bin/certpw.txt${gno
 echo -e "${green}Downloading the getidmis executables to $bin${gnorm}"
 cd $bin
 file="getidmis"
-uri="http://stagleys.co.uk/getidmis/mac/$file"
+uri="http://www.bioinf.org.uk/getidmis/mac/$file"
 curl -o $file $uri
 chmod a+x $file
 
 #file="curl"
-#uri="http://stagleys.co.uk/getidmis/mac/$file"
+#uri="http://www.bioinf.org.uk/getidmis/mac/$file"
 #curl -o $file $uri
 #chmod a+x $file
 
 file="getidmis.sh"
-uri="http://stagleys.co.uk/getidmis/mac/$file"
+uri="http://www.bioinf.org.uk/getidmis/mac/$file"
 curl -o $file $uri
 chmod a+x $file
 
 echo ""
 echo ""
 echo -e "${red}You must now copy your certificate file into $bin${rnorm}"
-echo -e "${red}   and rename it cert.p12                        ${rnorm}"
+echo -e "${red}   and rename it cert.p12                                   ${rnorm}"
 echo ""
 echo ""
 
