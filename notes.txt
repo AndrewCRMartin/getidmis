@@ -1,0 +1,9 @@
+Possible HTTPS libraries to avoid Curl
+
+https://www.google.com/search?q=https+client+library+c
+https://github.com/curl/curl
+https://gist.github.com/ElMostafaIdrassi/053904908d2e63ab73c1486c199c69bb
+https://github.com/curl/curl/discussions/10664
+https://github.com/guzzle/guzzle/issues/2411
+https://github.com/lammertb/libhttp/tree/master/doc
+https://curl.se/libcurl/c/example.html
