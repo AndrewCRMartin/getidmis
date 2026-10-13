@@ -138,6 +138,11 @@ int main(int argc, char **argv)
    /* Blank the password                                               */
    passwd[0] = '\0';
 
+   sprintf(tplURL,
+           "--data-urlencode Request=%%s --get %s/Report.php?Report=INN_Phase_6b_Admin_Report",
+           gBaseURL);
+
+#ifdef FUBAR   
 #if defined(MS_WINDOWS) || defined(_WIN32)
    sprintf(tplURL,
            "--data-urlencode Request=%%s --get %s/Report.php?Report=INN_Phase_6b_Admin_Report",
@@ -147,7 +152,8 @@ int main(int argc, char **argv)
            "'%s/Report.php?Request=%%s&Report=INN_Phase_6b_Admin_Report'",
            gBaseURL);
 #endif   
-
+#endif
+   
    strcpy(certFile,   "cert.p12");
    strcpy(passwdFile, "certpw.txt");
    strcpy(curlPath,   "curl");
@@ -187,9 +193,11 @@ int main(int argc, char **argv)
          }
          
          sprintf(url, tplURL, *argv);
+
          sprintf(exe,
                  "%s -s --cert-type p12 --cert %s:%s %s",
                  curlPath, certFile, passwd, url);
+
          if(verbose)
             printf("Running: %s\n", exe);
          page = Execute(exe);
@@ -228,6 +236,7 @@ int main(int argc, char **argv)
 #endif /* TEST                                                          */
 
 
+/************************************************************************/
 BOOL EmptyPage(char *page)
 {
    if(strlen(page)<1)

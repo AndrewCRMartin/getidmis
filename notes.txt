@@ -7,3 +7,32 @@ https://github.com/curl/curl/discussions/10664
 https://github.com/guzzle/guzzle/issues/2411
 https://github.com/lammertb/libhttp/tree/master/doc
 https://curl.se/libcurl/c/example.html
+
+# openssl pkcs12 -in old-cert.p12 -legacy -export -out modern-cert.p12
+
+1. Direct OpenSSL Configuration:
+
+If you want to change it strictly for an OpenSSL-reliant application,
+ you can edit /etc/ssl/openssl.cnf and adjust the CipherString
+ security level. Setting SECLEVEL=0 or SECLEVEL=1 will lift the
+ 2048-bit minimum constraint enforced by SECLEVEL=2.
+
+2. Microsoft Windows (SChannel)
+
+Windows uses the SChannel SSP to manage TLS handshakes. You can
+ configure minimum RSA key sizes via the Windows Registry.  Navigate
+ to:
+ HKLM\SYSTEM\CurrentControlSet\Control\Cryptography\Configuration\Local\SSL\00010002
+ You can define or modify properties like MinimumRSABitLength to
+ adjust the threshold.
+
+But ee key is still too small
+
+ https://stackoverflow.com/questions/67753969/sslerror-ssl-ee-key-too-small-ee-key-too-small-ssl-c4022-on-ubuntu-when
+ sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout mycert.pem -out mycert.pem
+
+Get info
+
+ openssl pkcs12 -in $IDMISCERTFILE -nokeys | openssl x509 -text -noout
+
+curl --cert-type p12 --cert /home/andrew/work/inn/idmis/Martin-cert.p12:$PWD --insecure --tlsv1.0 --data-urlencode Request=14730 --get https://extranets.who.int/inn/Report.php?Report=INN_Phase_6b_Admin_Report
